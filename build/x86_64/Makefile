@@ -7,9 +7,13 @@ all: clean
 
 	rm -r patch/
 
-	git clone ../.. momo
-	tar czf momo.tar.gz momo
-	rm -rf momo
+	# git clone ../.. momo
+	# tar czf momo.tar.gz momo
+	# rm -rf momo
+
+	cp -R ../.. /tmp/momo
+	tar czf momo.tar.gz -C /tmp momo
+	rm -rf /tmp/momo
 
 	# ベースイメージから構築したコンテナに転送してビルドし、
 	# ビルドが完了したら成果物の momo バイナリだけ取り出す

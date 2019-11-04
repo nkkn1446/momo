@@ -67,6 +67,11 @@ ubuntu-1804_x86_64:
 	# 生成されたバイナリをこのディレクトリに移動
 	mv x86_64/momo ./momo-ubuntu-18.04_x86_64-m$(WEBRTC_VERSION)-$(BUILD_NUMBER)
 
+.PHONY: ubuntu-1804_x86_64.clean
+ubuntu-1804_x86_64.clean:
+	# x86_64 用ビルド
+	$(MAKE) -C x86_64 clean.image.all WEBRTC_VERSION=$(WEBRTC_VERSION) BUILD_NUMBER=$(BUILD_NUMBER) MOMO_VERSION=$(MOMO_VERSION)
+
 .PHONY: ubuntu-1604_x86_64_ros
 ubuntu-1604_x86_64_ros:
 	# x86_64_ros 用ビルド
