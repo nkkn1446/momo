@@ -25,19 +25,6 @@
 
 const size_t kDefaultMaxLogFileSize = 10 * 1024 * 1024;
 
-boost::asio::io_context ioc{1};
-
-boost::posix_time::seconds interval(1);
-boost::asio::deadline_timer timer(ioc, interval);
-
-std::unique_ptr<RTCManager> rtc_manager;
-
-void tick(const boost::system::error_code&) {
-  if(rtc_manager) rtc_manager->render();
-  timer.expires_at(timer.expires_at() + interval);
-  timer.async_wait(tick);
-}
-
 int main(int argc, char* argv[])
 {
   ConnectionSettings cs;
@@ -91,15 +78,15 @@ int main(int argc, char* argv[])
   std::unique_ptr<cricket::VideoCapturer> capturer;
 #endif
 
-  // std::unique_ptr<RTCManager> rtc_manager(new RTCManager(cs, std::move(capturer)));
-  rtc_manager.reset(new RTCManager(cs, std::move(capturer)));
+  std::unique_ptr<RTCManager> rtc_manager(new RTCManager(cs, std::move(capturer)));
+
   {
+      boost::asio::io_context ioc{1};
+
       boost::asio::signal_set signals(ioc, SIGINT, SIGTERM);
       signals.async_wait([&](const boost::system::error_code&, int) {
           ioc.stop();
       });
-
-      timer.async_wait(tick);
 
       if (use_sora) {
         const boost::asio::ip::tcp::endpoint endpoint{boost::asio::ip::make_address("127.0.0.1"), static_cast<unsigned short>(cs.port)};

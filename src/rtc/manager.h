@@ -5,8 +5,6 @@
 #include "connection.h"
 #include "connection_settings.h"
 
-#include "customcapturer.h"
-
 class RTCManager
 {
 public:
@@ -17,8 +15,6 @@ public:
           webrtc::PeerConnectionInterface::RTCConfiguration rtc_config,
           RTCMessageSender *sender);
 
-  void render();
-
 private:
   rtc::scoped_refptr<webrtc::PeerConnectionFactoryInterface> _factory;
   rtc::scoped_refptr<webrtc::VideoTrackSourceInterface> _video_source;
@@ -26,7 +22,5 @@ private:
   std::unique_ptr<rtc::Thread> _workerThread;
   std::unique_ptr<rtc::Thread> _signalingThread;
   ConnectionSettings _conn_settings;
-
-  CustomVideoCapturer* _capturer;
 };
 #endif
