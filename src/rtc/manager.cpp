@@ -23,7 +23,8 @@
 #include "absl/memory/memory.h"
 #endif
 
-RTCManager::RTCManager(ConnectionSettings conn_settings, std::unique_ptr<cricket::VideoCapturer> capturer) : _conn_settings(conn_settings)
+// RTCManager::RTCManager(ConnectionSettings conn_settings, std::unique_ptr<cricket::VideoCapturer> capturer) : _conn_settings(conn_settings)
+RTCManager::RTCManager(ConnectionSettings conn_settings, std::unique_ptr<cricket::VideoCapturer> capturer) : _conn_settings(conn_settings), _capturer(nullptr)
 {
   rtc::InitializeSSL();
 
@@ -72,7 +73,9 @@ RTCManager::RTCManager(ConnectionSettings conn_settings, std::unique_ptr<cricket
     _video_source = _factory->CreateVideoSource(std::move(capturer));
 #else
 
-    capturer = createVideoCapturer();
+    // capturer = createVideoCapturer();
+    _capturer = new CustomVideoCapturer();
+    std::unique_ptr<cricket::VideoCapturer> capturer(_capturer);
 
     webrtc::FakeConstraints constraints;
         constraints.AddMandatory(webrtc::MediaConstraintsInterface::kMaxWidth, _conn_settings.getWidth());
@@ -176,4 +179,8 @@ std::shared_ptr<RTCConnection> RTCManager::createConnection(
   }
 
   return std::make_shared<RTCConnection>(sender, connection);
+}
+
+void RTCManager::render() {
+  if(_capturer) _capturer->Render();
 }
