@@ -10,6 +10,7 @@
 #include "modules/audio_processing/include/audio_processing.h"
 #include "modules/video_capture/video_capture_factory.h"
 #include "media/engine/webrtcvideocapturerfactory.h"
+#include "customfakevideocapturer.h"
 #include "rtc_base/ssladapter.h"
 #include "rtc_base/logging.h"
 
@@ -74,8 +75,9 @@ RTCManager::RTCManager(ConnectionSettings conn_settings, std::unique_ptr<cricket
 #else
 
     // capturer = createVideoCapturer();
-    _capturer = new CustomVideoCapturer();
-    std::unique_ptr<cricket::VideoCapturer> capturer(_capturer);
+    // _capturer = new CustomVideoCapturer();
+    auto c = new cricket::CustomFakeVideoCapturer(true);
+    std::unique_ptr<cricket::VideoCapturer> capturer(c);
 
     webrtc::FakeConstraints constraints;
         constraints.AddMandatory(webrtc::MediaConstraintsInterface::kMaxWidth, _conn_settings.getWidth());
