@@ -92,6 +92,5 @@ void ScalableVideoTrackSource::OnCapturedFrame(
 //		const rtc::VideoSinkWants& wants)
 //{
 //  RTC_LOG(LS_INFO) << "HOGE:" << __FILE__ << __LINE__;
-//  // TODO:ここベースで調べる
 //  RTC_LOG(LS_INFO) << typeid(*sink).name();
 //}

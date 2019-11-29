@@ -82,8 +82,7 @@ RTCManager::RTCManager(
     rtc::scoped_refptr<rtc::AdaptedVideoTrackSource> video_track_source,
     VideoTrackReceiver* receiver)
     : _conn_settings(conn_settings),
-      _receiver(receiver),
-      _capturer(nullptr){
+      _receiver(receiver) {
   rtc::InitializeSSL();
 
   _networkThread = rtc::Thread::CreateWithSocketServer();
@@ -295,9 +294,4 @@ std::shared_ptr<RTCConnection> RTCManager::createConnection(
 
   return std::make_shared<RTCConnection>(sender, std::move(observer),
                                          connection);
-}
-
-// render()実装を追加
-void RTCManager::render() {
-  if(_capturer) _capturer->Render();
 }

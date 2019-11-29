@@ -23,7 +23,6 @@
 #include "v4l2_video_capturer/v4l2_video_capturer.h"
 #else
 #include "rtc/device_video_capturer.h"
-#include "rtc/custom_video_track_source.h"
 #endif
 #endif
 #include "sdl_renderer/sdl_renderer.h"
@@ -85,9 +84,8 @@ int main(int argc, char* argv[]) {
 #if USE_MMAL_ENCODER || USE_JETSON_ENCODER
   rtc::scoped_refptr<V4L2VideoCapture> capturer = V4L2VideoCapture::Create(cs);
 #else
-  //rtc::scoped_refptr<DeviceVideoCapturer> capturer =
-  //    DeviceVideoCapturer::Create(cs.getWidth(), cs.getHeight(), cs.framerate);
-  rtc::scoped_refptr<CustomVideoTrackSource> capturer = new CustomVideoTrackSource();
+  rtc::scoped_refptr<DeviceVideoCapturer> capturer =
+      DeviceVideoCapturer::Create(cs.getWidth(), cs.getHeight(), cs.framerate);
 #endif
 #endif
   if (!capturer && !cs.no_video) {
