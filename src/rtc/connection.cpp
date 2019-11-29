@@ -1,5 +1,7 @@
 #include "rtc_base/logging.h"
 
+#include "pc/peer_connection.h"
+#include "api/peer_connection_proxy.h"
 #include "connection.h"
 
 RTCConnection::~RTCConnection() {
@@ -33,6 +35,14 @@ void RTCConnection::setOffer(const std::string sdp) {
       SetSessionDescriptionObserver::Create(session_description->GetType(),
                                             _sender),
       session_description.release());
+
+  RTC_LOG(LS_INFO) << __FUNCTION__;
+  auto* conn = static_cast<webrtc::PeerConnection*>(static_cast<webrtc::PeerConnectionProxy*>(_connection.get())->internal());
+  auto transceivers = conn->GetTransceiversInternal();
+  RTC_LOG(LS_INFO) << transceivers.size();
+  auto channel = transceivers[0]->internal()->channel();
+  auto media_channel = channel->media_channel();
+  RTC_LOG(LS_INFO) << (media_channel ? 1 : 0);
 }
 
 void RTCConnection::createAnswer() {

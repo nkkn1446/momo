@@ -275,21 +275,6 @@ std::shared_ptr<RTCConnection> RTCManager::createConnection(
     } else {
       RTC_LOG(LS_WARNING) << __FUNCTION__ << ": Cannot add _video_track";
     }
-
-
-
-      RTC_LOG(LS_INFO) << __FUNCTION__;
-     auto* conn = static_cast<webrtc::PeerConnection*>(static_cast<webrtc::PeerConnectionProxy*>(connection.get())->internal());
-     auto transceivers = conn->GetTransceiversInternal();
-     RTC_LOG(LS_INFO) << transceivers.size();
-     auto transceiver = transceivers[0]->internal();
-     RTC_LOG(LS_INFO) << typeid(transceiver).name();
-     auto channel = transceiver->channel();
-     RTC_LOG(LS_INFO) << typeid(channel).name();
-     if(channel) {
-	     auto media_channel = channel->media_channel();
-	     RTC_LOG(LS_INFO) << typeid(media_channel).name();
-     }
   }
 
   return std::make_shared<RTCConnection>(sender, std::move(observer),
