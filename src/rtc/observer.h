@@ -44,6 +44,7 @@ class CreateSessionDescriptionObserver
   static CreateSessionDescriptionObserver* Create(
       RTCMessageSender* sender,
       webrtc::PeerConnectionInterface* connection) {
+	  RTC_LOG(LS_INFO) << __FUNCTION__;
     return new rtc::RefCountedObject<CreateSessionDescriptionObserver>(
         sender, connection);
   }

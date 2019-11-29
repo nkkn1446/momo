@@ -11,6 +11,7 @@
 #include "scalable_track_source.h"
 
 #include <algorithm>
+#include <typeinfo>
 
 #include "api/scoped_refptr.h"
 #include "api/video/i420_buffer.h"
@@ -71,18 +72,26 @@ void ScalableVideoTrackSource::OnCapturedFrame(
   rtc::scoped_refptr<webrtc::VideoFrameBuffer> buffer =
       frame.video_frame_buffer();
 
-  if (adapted_width != frame.width() || adapted_height != frame.height()) {
-    // Video adapter has requested a down-scale. Allocate a new buffer and
-    // return scaled version.
-    rtc::scoped_refptr<webrtc::I420Buffer> i420_buffer =
-        webrtc::I420Buffer::Create(adapted_width, adapted_height);
-    i420_buffer->ScaleFrom(*buffer->ToI420());
-    buffer = i420_buffer;
-  }
+  // Video adapter has requested a down-scale. Allocate a new buffer and
+  // return scaled version.
+  rtc::scoped_refptr<webrtc::I420Buffer> i420_buffer =
+      webrtc::I420Buffer::Create(adapted_width, adapted_height);
+  i420_buffer->ScaleFrom(*buffer->ToI420());
+  buffer = i420_buffer;
 
+  RTC_LOG(LS_INFO) << "HOGE:" << __FILE__ << __LINE__;
   OnFrame(webrtc::VideoFrame::Builder()
               .set_video_frame_buffer(buffer)
               .set_rotation(frame.rotation())
               .set_timestamp_us(translated_timestamp_us)
               .build());
 }
+
+//void ScalableVideoTrackSource::AddOrUpdateSink(
+//		rtc::VideoSinkInterface<webrtc::VideoFrame>* sink,
+//		const rtc::VideoSinkWants& wants)
+//{
+//  RTC_LOG(LS_INFO) << "HOGE:" << __FILE__ << __LINE__;
+//  // TODO:ここベースで調べる
+//  RTC_LOG(LS_INFO) << typeid(*sink).name();
+//}

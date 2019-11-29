@@ -1,6 +1,9 @@
 
 #include <iostream>
+#include <typeinfo>
 
+#include "pc/peer_connection.h"
+#include "api/peer_connection_proxy.h"
 #include "absl/memory/memory.h"
 #include "api/audio_codecs/builtin_audio_decoder_factory.h"
 #include "api/audio_codecs/builtin_audio_encoder_factory.h"
@@ -41,12 +44,46 @@
 #include "hw_video_decoder_factory.h"
 #endif
 
+class CustomSender : public webrtc::VideoRtpSender {
+public:
+	static rtc::scoped_refptr<CustomSender> Create(const webrtc::VideoRtpSender& sender) {
+		return rtc::scoped_refptr<CustomSender>(
+				new rtc::RefCountedObject<CustomSender>(sender));
+	}
+
+	cricket::MediaChannel* getMediaChannel() {return media_channel_;}
+	void SetSsrc(uint32_t ssrc) override {
+		RTC_LOG(LS_INFO) << "FUGA";
+		RTC_LOG(LS_INFO) << (getMediaChannel() ? 1 : 0);
+		RTC_LOG(LS_INFO) << ssrc;
+		webrtc::VideoRtpSender::SetSsrc(ssrc);
+	}
+	//bool SetTrack(webrtc::MediaStreamTrackInterface* track) override {
+	//	RTC_LOG(LS_INFO) << "FUGA";
+	//	RTC_LOG(LS_INFO) << (getMediaChannel() ? 1 : 0);
+	//	return webrtc::VideoRtpSender::SetTrack(track);
+	//}
+	void SetMediaChannel(cricket::MediaChannel* media_channel) override {
+		RTC_LOG(LS_INFO) << "FUGA";
+		return webrtc::VideoRtpSender::SetMediaChannel(media_channel);
+	}
+
+protected:
+	void SetSend() override {
+		RTC_LOG(LS_INFO) << "FUGA";
+		webrtc::VideoRtpSender::SetSend();
+	}
+
+	CustomSender(const webrtc::VideoRtpSender& sender) : webrtc::VideoRtpSender(sender) {}
+};
+
 RTCManager::RTCManager(
     ConnectionSettings conn_settings,
-    rtc::scoped_refptr<ScalableVideoTrackSource> video_track_source,
+    rtc::scoped_refptr<rtc::AdaptedVideoTrackSource> video_track_source,
     VideoTrackReceiver* receiver)
     : _conn_settings(conn_settings),
-      _receiver(receiver) {
+      _receiver(receiver),
+      _capturer(nullptr){
   rtc::InitializeSSL();
 
   _networkThread = rtc::Thread::CreateWithSocketServer();
@@ -215,14 +252,52 @@ std::shared_ptr<RTCConnection> RTCManager::createConnection(
     if (video_add_result.ok()) {
       rtc::scoped_refptr<webrtc::RtpSenderInterface> video_sender =
           video_add_result.value();
+      RTC_LOG(LS_INFO) << __FUNCTION__;
+      //free(video_sender->track().get());
+      char hoge[256] = "\0";
+      sprintf(hoge, "%p", static_cast<webrtc::VideoTrackInterface*>(video_sender->track().get()));
+      RTC_LOG(LS_INFO) << hoge;
+      char fuga[256] = "\0";
+      sprintf(fuga, "%p", static_cast<webrtc::VideoTrackInterface*>(_video_track.get()));
+      RTC_LOG(LS_INFO) << fuga;
+
+      rtc::scoped_refptr<webrtc::RtpSenderProxyWithInternal<webrtc::RtpSenderInternal>> ptr = static_cast<webrtc::RtpSenderProxyWithInternal<webrtc::RtpSenderInternal>*>(video_sender.get());
+      auto proxy = ptr.get();
+      webrtc::RtpSenderInternal* internal = proxy->internal();
+      auto videosender = static_cast<webrtc::VideoRtpSender*>(internal);
+      auto customsender = CustomSender::Create(*videosender);
+      //free(videosender);
+      //memcpy((void*)(videosender), (void*)customsender.get(), sizeof(CustomSender));
+
       webrtc::RtpParameters parameters = video_sender->GetParameters();
       parameters.degradation_preference = _conn_settings.getPriority();
       video_sender->SetParameters(parameters);
+
     } else {
       RTC_LOG(LS_WARNING) << __FUNCTION__ << ": Cannot add _video_track";
     }
+
+
+
+      RTC_LOG(LS_INFO) << __FUNCTION__;
+     auto* conn = static_cast<webrtc::PeerConnection*>(static_cast<webrtc::PeerConnectionProxy*>(connection.get())->internal());
+     auto transceivers = conn->GetTransceiversInternal();
+     RTC_LOG(LS_INFO) << transceivers.size();
+     auto transceiver = transceivers[0]->internal();
+     RTC_LOG(LS_INFO) << typeid(transceiver).name();
+     auto channel = transceiver->channel();
+     RTC_LOG(LS_INFO) << typeid(channel).name();
+     if(channel) {
+	     auto media_channel = channel->media_channel();
+	     RTC_LOG(LS_INFO) << typeid(media_channel).name();
+     }
   }
 
   return std::make_shared<RTCConnection>(sender, std::move(observer),
                                          connection);
+}
+
+// render()実装を追加
+void RTCManager::render() {
+  if(_capturer) _capturer->Render();
 }

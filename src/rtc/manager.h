@@ -5,18 +5,22 @@
 
 #include "connection.h"
 #include "connection_settings.h"
-#include "scalable_track_source.h"
+#include "media/base/adapted_video_track_source.h"
 #include "video_track_receiver.h"
+
+#include "customcapturer.h"
 
 class RTCManager {
  public:
   RTCManager(ConnectionSettings conn_settings,
-             rtc::scoped_refptr<ScalableVideoTrackSource> video_track_source,
+             rtc::scoped_refptr<rtc::AdaptedVideoTrackSource> video_track_source,
              VideoTrackReceiver* receiver);
   ~RTCManager();
   std::shared_ptr<RTCConnection> createConnection(
       webrtc::PeerConnectionInterface::RTCConfiguration rtc_config,
       RTCMessageSender* sender);
+
+  void render();
 
  private:
   rtc::scoped_refptr<webrtc::PeerConnectionFactoryInterface> _factory;
@@ -27,5 +31,7 @@ class RTCManager {
   std::unique_ptr<rtc::Thread> _signalingThread;
   ConnectionSettings _conn_settings;
   VideoTrackReceiver* _receiver;
+
+  CustomVideoCapturer* _capturer;
 };
 #endif
