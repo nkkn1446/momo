@@ -21,6 +21,10 @@
 
 #include "native_buffer.h"
 
+#include "third_party/libyuv/include/libyuv/convert.h"
+#include "third_party/libyuv/include/libyuv/planar_functions.h"
+#include "third_party/libyuv/include/libyuv/scale.h"
+
 ScalableVideoTrackSource::ScalableVideoTrackSource()
     : AdaptedVideoTrackSource(4) {}
 ScalableVideoTrackSource::~ScalableVideoTrackSource() {}
@@ -77,14 +81,24 @@ void ScalableVideoTrackSource::OnCapturedFrame(
   rtc::scoped_refptr<webrtc::I420Buffer> i420_buffer =
       webrtc::I420Buffer::Create(adapted_width, adapted_height);
   i420_buffer->ScaleFrom(*buffer->ToI420());
+  webrtc::I420Buffer::SetBlack(i420_buffer.get()); // this works!
+  int x = 20, y = 50;
+  int w = 50 + (random()%20);
+  int h = 90 + (random()%50);  //    i420_buffer.get()->width(), i420_buffer.get()->height(),
+
+  libyuv::I420Rect(i420_buffer.get()->MutableDataY(), i420_buffer.get()->StrideY(),
+		  i420_buffer.get()->MutableDataU(), i420_buffer.get()->StrideU(),
+		  i420_buffer.get()->MutableDataV(), i420_buffer.get()->StrideV(),
+		  x, y, w, h,
+		  random()%200, random()&128,random()%128);
   buffer = i420_buffer;
 
-  RTC_LOG(LS_INFO) << "HOGE:" << __FILE__ << __LINE__;
+
   OnFrame(webrtc::VideoFrame::Builder()
-              .set_video_frame_buffer(buffer)
-              .set_rotation(frame.rotation())
-              .set_timestamp_us(translated_timestamp_us)
-              .build());
+		  .set_video_frame_buffer(buffer)
+		  .set_rotation(frame.rotation())
+		  .set_timestamp_us(translated_timestamp_us)
+		  .build());
 }
 
 //void ScalableVideoTrackSource::AddOrUpdateSink(
