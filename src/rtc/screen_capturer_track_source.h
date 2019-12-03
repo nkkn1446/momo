@@ -12,10 +12,10 @@
 
 #include "media/base/adapted_video_track_source.h"
 
-class ScreenCaptureTrackSource : public rtc::AdaptedVideoTrackSource {
+class ScreenCapturerTrackSource : public rtc::AdaptedVideoTrackSource {
  public:
-  ScreenCaptureTrackSource();
-  virtual ~ScreenCaptureTrackSource();
+  ScreenCapturerTrackSource();
+  virtual ~ScreenCapturerTrackSource();
 
   bool is_screencast() const override;
   absl::optional<bool> needs_denoising() const override;

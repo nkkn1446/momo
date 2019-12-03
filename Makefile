@@ -264,7 +264,7 @@ ifdef MOMO_VERSION
   CFLAGS += -DMOMO_VERSION='"$(MOMO_VERSION)"'
 endif
 
-LDFLAGS += -lwebrtc
+LDFLAGS += -lwebrtc -lXfixes -lXdamage -lXcomposite
 
 ifeq ($(USE_ROS),1)
   ifeq ($(TARGET_OS_LINUX),ubuntu-16.04)
@@ -277,6 +277,7 @@ ifeq ($(USE_ROS),1)
 endif
 
 CFLAGS += -DUSE_H264=$(USE_H264)
+CFLAGS += -DUSE_X11
 
 ifeq ($(TARGET_OS),linux)
   CFLAGS += -fpic
