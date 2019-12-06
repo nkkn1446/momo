@@ -9,25 +9,70 @@
  */
 
 #include "screen_capturer_track_source.h"
+#include "rtc_base/logging.h"
 
-ScreenCapturerTrackSource::ScreenCapturerTrackSource()
-    : AdaptedVideoTrackSource(4) {}
-ScreenCapturerTrackSource::~ScreenCapturerTrackSource() {}
+#include "api/video/i420_buffer.h"
+#include "api/video/video_frame_buffer.h"
+#include "api/video/video_rotation.h"
 
-bool ScreenCapturerTrackSource::is_screencast() const {
-  return true;
+#include "native_buffer.h"
+
+#include "third_party/libyuv/include/libyuv/convert.h"
+#include "third_party/libyuv/include/libyuv/planar_functions.h"
+#include "third_party/libyuv/include/libyuv/scale.h"
+
+ScreenCapturerTrackSource::DesktopCaptureImpl::DesktopCaptureImpl() : 
+	frame_() {}
+ScreenCapturerTrackSource::DesktopCaptureImpl::~DesktopCaptureImpl() {}
+
+void ScreenCapturerTrackSource::DesktopCaptureImpl::StartCapture() {
+	if (!captureThread_) {
+		captureThread_.reset(
+				new rtc::PlatformThread(DesktopCaptureImpl::CaptureThread, this,
+					"CaptureThread", rtc::kHighPriority));
+		captureThread_->Start();
+	}
 }
 
-absl::optional<bool> ScreenCapturerTrackSource::needs_denoising() const {
-  return false;
+void ScreenCapturerTrackSource::DesktopCaptureImpl::CaptureThread(void* obj) {
+	auto* capture = static_cast<DesktopCaptureImpl*>(obj);
+	while (capture->CaptureProcess()) {
+	}
 }
 
-webrtc::MediaSourceInterface::SourceState ScreenCapturerTrackSource::state()
-    const {
-  return SourceState::kLive;
+void ScreenCapturerTrackSource::DesktopCaptureImpl::Callback(std::unique_ptr<webrtc::DesktopFrame>&& frame) {
+	unsigned char* data = frame->data();
+	webrtc::DesktopSize size = frame->size();
+	webrtc::VideoCaptureCapability frameInfo;
+
+	frameInfo.width = size.width();
+	frameInfo.height = size.height();
+	frameInfo.videoType = webrtc::VideoType::kARGB;
+
+	IncomingFrame(data, size.width() * size.height() * webrtc::DesktopFrame::kBytesPerPixel, frameInfo);
+}
+	
+bool ScreenCapturerTrackSource::DesktopCaptureImpl::CaptureProcess() {
+	frame_.Capturer(std::bind(
+				&DesktopCaptureImpl::Callback,
+				this,
+				std::placeholders::_1));
+	return true;
+
 }
 
-bool ScreenCapturerTrackSource::remote() const {
-  return false;
+ScreenCapturerTrackSource::ScreenCapturerTrackSource() :
+      dcm_(new rtc::RefCountedObject<DesktopCaptureImpl>()) {
+  dcm_->RegisterCaptureDataCallback(this);
+  dcm_->StartCapture();
 }
 
+ScreenCapturerTrackSource::~ScreenCapturerTrackSource() {
+  dcm_->StopCapture();
+  dcm_->DeRegisterCaptureDataCallback();
+  dcm_ = nullptr;
+}
+
+void ScreenCapturerTrackSource::OnFrame(const webrtc::VideoFrame& frame) {
+  OnCapturedFrame(frame);
+}

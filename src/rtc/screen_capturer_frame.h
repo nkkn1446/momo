@@ -9,6 +9,7 @@
  */
 
 #include <memory>
+#include <functional>
 
 #include "modules/desktop_capture/desktop_capture_options.h"
 #include "modules/desktop_capture/desktop_capturer.h"
@@ -24,16 +25,21 @@
 
 namespace webrtc {
 
-class ScreenCapturerFrame {
+typedef std::function<void(std::unique_ptr<DesktopFrame>&&)> CaptureCallback;
+
+class ScreenCapturerFrame : public DesktopCapturer::Callback {
  public:
-  void SetUp();
+  ScreenCapturerFrame();
   webrtc::DesktopCapturer::SourceList
 	  GetScreenListAndSelectScreen();
-  void Capturer();
+  void Capturer(const CaptureCallback& callback);
  protected:
 
+  void OnCaptureResult(DesktopCapturer::Result result,
+		  std::unique_ptr<DesktopFrame> frame) override;
+
   std::unique_ptr<DesktopCapturer> capturer_;
-  //MockDesktopCapturerCallback callback_;
+  std::unique_ptr<DesktopFrame> frame_;
 };
 
 }

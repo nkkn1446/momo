@@ -44,8 +44,6 @@
 #include "hw_video_decoder_factory.h"
 #endif
 
-#include "screen_capturer_frame.h"
-
 class CustomSender : public webrtc::VideoRtpSender {
 public:
 	static rtc::scoped_refptr<CustomSender> Create(const webrtc::VideoRtpSender& sender) {
@@ -86,9 +84,6 @@ RTCManager::RTCManager(
     : _conn_settings(conn_settings),
       _receiver(receiver) {
   rtc::InitializeSSL();
-
-  webrtc::ScreenCapturerFrame frame;
-  frame.SetUp();
 
   _networkThread = rtc::Thread::CreateWithSocketServer();
   _networkThread->Start();

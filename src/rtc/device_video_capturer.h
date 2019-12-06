@@ -22,10 +22,10 @@
 class DeviceVideoCapturer : public ScalableVideoTrackSource,
                             public rtc::VideoSinkInterface<webrtc::VideoFrame> {
  public:
-  static rtc::scoped_refptr<DeviceVideoCapturer> Create(size_t width,
+  static rtc::scoped_refptr<rtc::AdaptedVideoTrackSource> Create(size_t width,
                                                         size_t height,
                                                         size_t target_fps);
-  static rtc::scoped_refptr<DeviceVideoCapturer> Create(
+  static rtc::scoped_refptr<rtc::AdaptedVideoTrackSource> Create(
       size_t width,
       size_t height,
       size_t target_fps,

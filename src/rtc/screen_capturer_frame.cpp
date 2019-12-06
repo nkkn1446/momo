@@ -10,15 +10,14 @@
 
 #include "screen_capturer_frame.h"
 
-#include "modules/desktop_capture/linux/screen_capturer_x11.h"
-
 namespace webrtc {
 
-void ScreenCapturerFrame::SetUp() {
+ScreenCapturerFrame::ScreenCapturerFrame() {
   capturer_ = DesktopCapturer::CreateScreenCapturer(
       DesktopCaptureOptions::CreateDefault());
   RTC_DCHECK(capturer_);
-  RTC_LOG(LS_INFO) << __FUNCTION__;
+
+  capturer_->Start(this);
 }
 
 webrtc::DesktopCapturer::SourceList
@@ -31,15 +30,17 @@ ScreenCapturerFrame::GetScreenListAndSelectScreen() {
   return screens;
 }
 
-void ScreenCapturerFrame::Capturer() {
-  // Assume that Start() treats the screen as invalid initially.
-  std::unique_ptr<DesktopFrame> frame;
-  //EXPECT_CALL(callback_,
-  //            OnCaptureResultPtr(DesktopCapturer::Result::SUCCESS, _))
-  //    .WillOnce(SaveUniquePtrArg(&frame));
-
-  //capturer_->Start(&callback_);
+void ScreenCapturerFrame::Capturer(const CaptureCallback& callback) {
+  frame_.reset();
   capturer_->CaptureFrame();
+  callback(std::unique_ptr<DesktopFrame>(frame_.release()));
+}
+
+void ScreenCapturerFrame::OnCaptureResult(DesktopCapturer::Result result,
+		std::unique_ptr<DesktopFrame> frame) {
+  if (static_cast<uint32_t>(result) != 0)
+	  RTC_LOG(LS_INFO) << result;
+  frame_ = std::move(frame);
 }
 
 }  // namespace webrtc
