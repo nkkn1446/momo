@@ -11,7 +11,6 @@
 #include <memory>
 #include <functional>
 
-#include "modules/desktop_capture/desktop_capture_options.h"
 #include "modules/desktop_capture/desktop_capturer.h"
 #include "modules/desktop_capture/desktop_frame.h"
 #include "modules/desktop_capture/desktop_region.h"
@@ -35,8 +34,6 @@ class ScreenCapturerFrame : public DesktopCapturer::Callback {
 
   std::unique_ptr<DesktopCapturer> capturer_;
   std::unique_ptr<DesktopFrame> frame_;
-
-  DesktopCaptureOptions options_;
 };
 
 }
