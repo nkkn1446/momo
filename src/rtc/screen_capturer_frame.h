@@ -15,13 +15,8 @@
 #include "modules/desktop_capture/desktop_capturer.h"
 #include "modules/desktop_capture/desktop_frame.h"
 #include "modules/desktop_capture/desktop_region.h"
-//#include "modules/desktop_capture/mock_desktop_capturer_callback.h"
 #include "rtc_base/constructor_magic.h"
 #include "rtc_base/logging.h"
-
-#if defined(WEBRTC_WIN)
-#include "modules/desktop_capture/win/screen_capturer_win_directx.h"
-#endif  // defined(WEBRTC_WIN)
 
 namespace webrtc {
 

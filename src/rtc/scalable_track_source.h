@@ -19,6 +19,8 @@
 #include "rtc_base/timestamp_aligner.h"
 
 class ScalableVideoTrackSource : public rtc::AdaptedVideoTrackSource {
+ private:
+  typedef rtc::AdaptedVideoTrackSource super;
  public:
   ScalableVideoTrackSource();
   virtual ~ScalableVideoTrackSource();
