@@ -35,7 +35,6 @@ class ScreenCapturerFrame : public DesktopCapturer::Callback {
 
   std::unique_ptr<DesktopCapturer> capturer_;
   std::unique_ptr<DesktopFrame> frame_;
-  SharedXDisplay* x_display_;
 };
 
 }
