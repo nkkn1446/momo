@@ -10,20 +10,16 @@
 #ifndef CUSTOM_VIDEO_TRACK_SOURCE_H_
 #define CUSTOM_VIDEO_TRACK_SOURCE_H_
 
-//#include "rtc/scalable_track_source.h"
-#include "media/base/adapted_video_track_source.h"
+#include "rtc/scalable_track_source.h"
 #include "api/video/video_sink_interface.h"
 #include "modules/video_capture/video_capture_impl.h"
 #include "rtc_base/ref_counted_object.h"
 #include "rtc_base/platform_thread.h"
 
 #include "screen_capturer_frame.h"
-#include "rtc_base/timestamp_aligner.h"
 
-class ScreenCapturerTrackSource : public rtc::AdaptedVideoTrackSource,
+class ScreenCapturerTrackSource : public ScalableVideoTrackSource,
                             public rtc::VideoSinkInterface<webrtc::VideoFrame> {
- private:
-  typedef rtc::AdaptedVideoTrackSource super;
  public:
   ScreenCapturerTrackSource();
   virtual ~ScreenCapturerTrackSource();
@@ -46,17 +42,6 @@ class ScreenCapturerTrackSource : public rtc::AdaptedVideoTrackSource,
   };
 
   rtc::scoped_refptr<DesktopCaptureImpl> dcm_;
-
-  bool is_screencast() const override;
-  absl::optional<bool> needs_denoising() const override;
-  webrtc::MediaSourceInterface::SourceState state() const override;
-  bool remote() const override;
-  virtual bool useNativeBuffer() { return false; }
-
- private:
-  rtc::TimestampAligner timestamp_aligner_;
-
-  cricket::VideoAdapter video_adapter_;
 };
 
 #endif  // VIDEO_CAPTURER_H_
