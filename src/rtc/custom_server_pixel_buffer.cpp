@@ -285,7 +285,7 @@ bool CustomServerPixelBuffer::CaptureRect(const DesktopRect& rect,
   
   auto width = window_size_.width();
   height = window_size_.height();
-  unsigned int screen_size = width*height*4;
+  unsigned int screen_size = width*height*DesktopFrame::kBytesPerPixel;
   std::vector<uint8_t> src(screen_size);
   auto size = fread((void*)src.data(), 1, screen_size, fp_);
   RTC_LOG(LS_INFO) << size;
