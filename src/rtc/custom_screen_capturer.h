@@ -11,6 +11,8 @@
 #ifndef _CUSTOM_SCREEN_CAPTURER
 #define _CUSTOM_SCREEN_CAPTURER
 
+#include "custom_server_pixel_buffer.h"
+
 #include <X11/X.h>
 #include <X11/Xlib.h>
 #include <X11/extensions/Xdamage.h>
@@ -24,7 +26,6 @@
 #include "modules/desktop_capture/desktop_region.h"
 #include "modules/desktop_capture/linux/shared_x_display.h"
 #include "modules/desktop_capture/linux/x_atom_cache.h"
-#include "modules/desktop_capture/linux/x_server_pixel_buffer.h"
 #include "modules/desktop_capture/screen_capture_frame_queue.h"
 #include "modules/desktop_capture/screen_capturer_helper.h"
 #include "modules/desktop_capture/shared_desktop_frame.h"
@@ -105,7 +106,7 @@ class CustomScreenCapturer : public DesktopCapturer,
   XserverRegion damage_region_ = 0;
 
   // Access to the X Server's pixel buffer.
-  XServerPixelBuffer x_server_pixel_buffer_;
+  CustomServerPixelBuffer x_server_pixel_buffer_;
 
   // A thread-safe list of invalid rectangles, and the size of the most
   // recently captured screen.

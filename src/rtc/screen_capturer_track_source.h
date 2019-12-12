@@ -10,10 +10,9 @@
 #ifndef CUSTOM_VIDEO_TRACK_SOURCE_H_
 #define CUSTOM_VIDEO_TRACK_SOURCE_H_
 
-//#include "rtc/scalable_track_source.h"
+#include "custom_video_capture_impl.h"
 #include "media/base/adapted_video_track_source.h"
 #include "api/video/video_sink_interface.h"
-#include "modules/video_capture/video_capture_impl.h"
 #include "rtc_base/ref_counted_object.h"
 #include "rtc_base/platform_thread.h"
 
@@ -30,7 +29,7 @@ class ScreenCapturerTrackSource : public rtc::AdaptedVideoTrackSource,
 
   void OnFrame(const webrtc::VideoFrame& frame) override;
 
-  class DesktopCaptureImpl : public webrtc::videocapturemodule::VideoCaptureImpl {
+  class DesktopCaptureImpl : public webrtc::CustomVideoCaptureImpl {
   public:
 	  DesktopCaptureImpl();
 	  ~DesktopCaptureImpl() override;

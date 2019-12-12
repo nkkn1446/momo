@@ -9,23 +9,24 @@
  */
 
 #include "screen_capturer_frame.h"
+#include "custom_screen_capturer.h"
 #include "modules/desktop_capture/desktop_capture_options.h"
+#include "modules/desktop_capture/linux/screen_capturer_x11.h"
 
 namespace webrtc {
 
 ScreenCapturerFrame::ScreenCapturerFrame() {
-  capturer_ = DesktopCapturer::CreateWindowCapturer(
-		  DesktopCaptureOptions::CreateDefault());
-  RTC_DCHECK(capturer_);
+  auto options = DesktopCaptureOptions::CreateDefault();
+  auto capturer = std::make_unique<CustomScreenCapturer>();
+  capturer.get()->Init(options);
+  capturer_ = std::move(capturer);
+
+
+
+  // capturer_ = DesktopCapturer::CreateScreenCapturer(options);
+  // RTC_DCHECK(capturer_);
 
   capturer_->Start(this);
-
-  DesktopCapturer::SourceList sources;
-  capturer_->GetSourceList(&sources);
-  auto it = sources.begin();
-  if (!capturer_->SelectSource(it->id)) {
-          RTC_LOG(LS_INFO) << __FUNCTION__;
-  }
 }
 
 webrtc::DesktopCapturer::SourceList
