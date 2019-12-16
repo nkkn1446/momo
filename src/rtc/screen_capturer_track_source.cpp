@@ -47,9 +47,9 @@ void ScreenCapturerTrackSource::DesktopCaptureImpl::Callback(std::unique_ptr<web
 
 	frameInfo.width = size.width();
 	frameInfo.height = size.height();
-	frameInfo.videoType = webrtc::VideoType::kARGB;
+	frameInfo.videoType = webrtc::VideoType::kYUY2;
 
-	webrtc::VideoFrame captureFrame = IncomingFrame(data, size.width() * size.height() * webrtc::DesktopFrame::kBytesPerPixel, frameInfo);
+	webrtc::VideoFrame captureFrame = IncomingFrame(data, size.width() * size.height() * 2, frameInfo);
 	DeliverCapturedFrame(captureFrame);
 }
 	
