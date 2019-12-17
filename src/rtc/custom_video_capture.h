@@ -45,7 +45,6 @@ class CustomVideoCaptureModule : public CustomVideoCaptureImpl {
   rtc::CriticalSection _captureCritSect;
   bool quit_ RTC_GUARDED_BY(_captureCritSect);
   int32_t _deviceId;
-  int32_t _deviceFd;
 
   int32_t _buffersAllocatedByDevice;
   int32_t _currentWidth;
@@ -58,6 +57,8 @@ class CustomVideoCaptureModule : public CustomVideoCaptureImpl {
     size_t length;
   };
   Buffer* _pool;
+
+  FILE* fp_ = nullptr;
 };
 }  // namespace webrtc
 

@@ -20,6 +20,7 @@
 #include <sys/select.h>
 #include <time.h>
 #include <unistd.h>
+#include <regex>
 
 #include <new>
 #include <string>
@@ -34,7 +35,6 @@ namespace webrtc {
 CustomVideoCaptureModule::CustomVideoCaptureModule()
     : CustomVideoCaptureImpl(),
       _deviceId(-1),
-      _deviceFd(-1),
       _buffersAllocatedByDevice(-1),
       _currentWidth(-1),
       _currentHeight(-1),
@@ -87,8 +87,6 @@ int32_t CustomVideoCaptureModule::Init(const char* deviceUniqueIdUTF8) {
 
 CustomVideoCaptureModule::~CustomVideoCaptureModule() {
   StopCapture();
-  if (_deviceFd != -1)
-    close(_deviceFd);
 }
 
 int32_t CustomVideoCaptureModule::StartCapture(
@@ -104,14 +102,6 @@ int32_t CustomVideoCaptureModule::StartCapture(
   }
 
   rtc::CritScope cs(&_captureCritSect);
-  // first open /dev/video device
-  char device[20];
-  sprintf(device, "/dev/video%d", (int)_deviceId);
-
-  if ((_deviceFd = open(device, O_RDWR | O_NONBLOCK, 0)) < 0) {
-    RTC_LOG(LS_INFO) << "error in opening " << device << " errono = " << errno;
-    return -1;
-  }
 
   // Supported video formats in preferred order.
   // If the requested resolution is larger than VGA, we prefer MJPEG. Go for
@@ -132,86 +122,43 @@ int32_t CustomVideoCaptureModule::StartCapture(
     fmts[4] = V4L2_PIX_FMT_JPEG;
   }
 
-  // Enumerate image formats.
-  struct v4l2_fmtdesc fmt;
-  int fmtsIdx = nFormats;
-  memset(&fmt, 0, sizeof(fmt));
-  fmt.index = 0;
-  fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-  RTC_LOG(LS_INFO) << "Video Capture enumerats supported image formats:";
-  while (ioctl(_deviceFd, VIDIOC_ENUM_FMT, &fmt) == 0) {
-    RTC_LOG(LS_INFO) << "  { pixelformat = "
-                     << cricket::GetFourccName(fmt.pixelformat)
-                     << ", description = '" << fmt.description << "' }";
-    // Match the preferred order.
-    for (int i = 0; i < nFormats; i++) {
-      if (fmt.pixelformat == fmts[i] && i < fmtsIdx)
-        fmtsIdx = i;
-    }
-    // Keep enumerating.
-    fmt.index++;
+  const int PIPE_BUF_SIZE=256;
+  char  buf[PIPE_BUF_SIZE];
+  std::string cmd = "ffmpeg -f v4l2 -i /dev/video0 2>&1";
+  if ( (fp_=popen(cmd.c_str(),"r")) ==NULL) {
+          return -1;
+  }
+  std::string data;
+  while(fgets(buf, PIPE_BUF_SIZE, fp_) != NULL) {
+          data+=std::string(buf);
+  }
+  pclose(fp_);
+
+  const char* pattern = " ([0-9]+)x([0-9]+)[,| ]";
+  std::regex re(pattern);
+  std::cmatch match;
+  if ( std::regex_search(data.c_str(), match, re) ) {
+          if(match.size()>=3){
+		  _currentWidth = atoi(match.str(1).c_str());
+		  _currentHeight = atoi(match.str(2).c_str());
+          }
   }
 
-  if (fmtsIdx == nFormats) {
-    RTC_LOG(LS_INFO) << "no supporting video formats found";
-    return -1;
-  } else {
-    RTC_LOG(LS_INFO) << "We prefer format "
-                     << cricket::GetFourccName(fmts[fmtsIdx]);
+  cmd="ffmpeg -f v4l2 -i /dev/video0 -f image2pipe -vcodec rawvideo - 2>&1";
+  if ( (fp_=popen(cmd.c_str(),"r")) ==NULL) {
+	  return -1;
   }
 
-  struct v4l2_format video_fmt;
-  memset(&video_fmt, 0, sizeof(struct v4l2_format));
-  video_fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-  video_fmt.fmt.pix.sizeimage = 0;
-  video_fmt.fmt.pix.width = capability.width;
-  video_fmt.fmt.pix.height = capability.height;
-  video_fmt.fmt.pix.pixelformat = fmts[fmtsIdx];
-
-  if (video_fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_YUYV)
-    _captureVideoType = VideoType::kYUY2;
-  else if (video_fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_YUV420)
-    _captureVideoType = VideoType::kI420;
-  else if (video_fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_UYVY)
-    _captureVideoType = VideoType::kUYVY;
-  else if (video_fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_MJPEG ||
-           video_fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_JPEG)
-    _captureVideoType = VideoType::kMJPEG;
-
-  // set format and frame size now
-  if (ioctl(_deviceFd, VIDIOC_S_FMT, &video_fmt) < 0) {
-    RTC_LOG(LS_INFO) << "error in VIDIOC_S_FMT, errno = " << errno;
-    return -1;
-  }
-
-  // initialize current width and height
-  _currentWidth = video_fmt.fmt.pix.width;
-  _currentHeight = video_fmt.fmt.pix.height;
+  _captureVideoType = VideoType::kYUY2;
 
   // Trying to set frame rate, before check driver capability.
   bool driver_framerate_support = true;
   struct v4l2_streamparm streamparms;
   memset(&streamparms, 0, sizeof(streamparms));
   streamparms.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-  if (ioctl(_deviceFd, VIDIOC_G_PARM, &streamparms) < 0) {
-    RTC_LOG(LS_INFO) << "error in VIDIOC_G_PARM errno = " << errno;
-    driver_framerate_support = false;
-    // continue
-  } else {
-    // check the capability flag is set to V4L2_CAP_TIMEPERFRAME.
-    if (streamparms.parm.capture.capability & V4L2_CAP_TIMEPERFRAME) {
-      // driver supports the feature. Set required framerate.
-      memset(&streamparms, 0, sizeof(streamparms));
-      streamparms.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-      streamparms.parm.capture.timeperframe.numerator = 1;
-      streamparms.parm.capture.timeperframe.denominator = capability.maxFPS;
-      if (ioctl(_deviceFd, VIDIOC_S_PARM, &streamparms) < 0) {
-        RTC_LOG(LS_INFO) << "Failed to set the framerate. errno=" << errno;
-        driver_framerate_support = false;
-      } else {
-        _currentFrameRate = capability.maxFPS;
-      }
-    }
+  // check the capability flag is set to V4L2_CAP_TIMEPERFRAME.
+  if (streamparms.parm.capture.capability & V4L2_CAP_TIMEPERFRAME) {
+	  _currentFrameRate = capability.maxFPS;
   }
   // If driver doesn't support framerate control, need to hardcode.
   // Hardcoding the value based on the frame size.
@@ -237,14 +184,6 @@ int32_t CustomVideoCaptureModule::StartCapture(
     _captureThread->Start();
   }
 
-  // Needed to start UVC camera - from the uvcview application
-  enum v4l2_buf_type type;
-  type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-  if (ioctl(_deviceFd, VIDIOC_STREAMON, &type) == -1) {
-    RTC_LOG(LS_INFO) << "Failed to turn on stream";
-    return -1;
-  }
-
   _captureStarted = true;
   return 0;
 }
@@ -265,8 +204,6 @@ int32_t CustomVideoCaptureModule::StopCapture() {
     _captureStarted = false;
 
     DeAllocateVideoBuffers();
-    close(_deviceFd);
-    _deviceFd = -1;
   }
 
   return 0;
@@ -282,14 +219,6 @@ bool CustomVideoCaptureModule::AllocateVideoBuffers() {
   rbuffer.memory = V4L2_MEMORY_MMAP;
   rbuffer.count = kNoOfV4L2Bufffers;
 
-  if (ioctl(_deviceFd, VIDIOC_REQBUFS, &rbuffer) < 0) {
-    RTC_LOG(LS_INFO) << "Could not get buffers from device. errno = " << errno;
-    return false;
-  }
-
-  if (rbuffer.count > kNoOfV4L2Bufffers)
-    rbuffer.count = kNoOfV4L2Bufffers;
-
   _buffersAllocatedByDevice = rbuffer.count;
 
   // Map the buffers
@@ -302,12 +231,8 @@ bool CustomVideoCaptureModule::AllocateVideoBuffers() {
     buffer.memory = V4L2_MEMORY_MMAP;
     buffer.index = i;
 
-    if (ioctl(_deviceFd, VIDIOC_QUERYBUF, &buffer) < 0) {
-      return false;
-    }
-
-    _pool[i].start = mmap(NULL, buffer.length, PROT_READ | PROT_WRITE,
-                          MAP_SHARED, _deviceFd, buffer.m.offset);
+    //_pool[i].start = mmap(NULL, buffer.length, PROT_READ | PROT_WRITE,
+    //                      MAP_SHARED, _deviceFd, buffer.m.offset);
 
     if (MAP_FAILED == _pool[i].start) {
       for (unsigned int j = 0; j < i; j++)
@@ -316,10 +241,6 @@ bool CustomVideoCaptureModule::AllocateVideoBuffers() {
     }
 
     _pool[i].length = buffer.length;
-
-    if (ioctl(_deviceFd, VIDIOC_QBUF, &buffer) < 0) {
-      return false;
-    }
   }
   return true;
 }
@@ -330,13 +251,6 @@ bool CustomVideoCaptureModule::DeAllocateVideoBuffers() {
     munmap(_pool[i].start, _pool[i].length);
 
   delete[] _pool;
-
-  // turn off stream
-  enum v4l2_buf_type type;
-  type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-  if (ioctl(_deviceFd, VIDIOC_STREAMOFF, &type) < 0) {
-    RTC_LOG(LS_INFO) << "VIDIOC_STREAMOFF error. errno: " << errno;
-  }
 
   return true;
 }
@@ -351,29 +265,6 @@ void CustomVideoCaptureModule::CaptureThread(void* obj) {
   }
 }
 bool CustomVideoCaptureModule::CaptureProcess() {
-  int retVal = 0;
-  fd_set rSet;
-  struct timeval timeout;
-
-  FD_ZERO(&rSet);
-  FD_SET(_deviceFd, &rSet);
-  timeout.tv_sec = 1;
-  timeout.tv_usec = 0;
-
-  // _deviceFd written only in StartCapture, when this thread isn't running.
-  retVal = select(_deviceFd + 1, &rSet, NULL, NULL, &timeout);
-  if (retVal < 0 && errno != EINTR)  // continue if interrupted
-  {
-    // select failed
-    return false;
-  } else if (retVal == 0) {
-    // select timed out
-    return true;
-  } else if (!FD_ISSET(_deviceFd, &rSet)) {
-    // not event on camera handle
-    return true;
-  }
-
   {
     rtc::CritScope cs(&_captureCritSect);
 
@@ -386,37 +277,26 @@ bool CustomVideoCaptureModule::CaptureProcess() {
       memset(&buf, 0, sizeof(struct v4l2_buffer));
       buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
       buf.memory = V4L2_MEMORY_MMAP;
-      // dequeue a buffer - repeat until dequeued properly!
-      while (ioctl(_deviceFd, VIDIOC_DQBUF, &buf) < 0) {
-        if (errno != EINTR) {
-          RTC_LOG(LS_INFO) << "could not sync on a buffer on device "
-                           << strerror(errno);
-          return true;
-        }
-      }
+
       VideoCaptureCapability frameInfo;
       frameInfo.width = _currentWidth;
       frameInfo.height = _currentHeight;
       frameInfo.videoType = _captureVideoType;
 
-      // convert to to I420 if needed
-      VideoFrame captureFrame = IncomingFrame((unsigned char*)_pool[buf.index].start, buf.bytesused, frameInfo);
-
-      size_t size = frameInfo.width * frameInfo.height * 4;
-      std::unique_ptr<uint8_t[]> out_argb8888_buffer(
-      new uint8_t[size]);
-      ConvertFromI420(captureFrame, VideoType::kARGB, 0,
-        	      out_argb8888_buffer.get());
-      frameInfo.videoType = VideoType::kARGB;
-
-      // convert to to I420 if needed
-      captureFrame = IncomingFrame((unsigned char*)out_argb8888_buffer.get(), size, frameInfo);
-      DeliverCapturedFrame(captureFrame);
-
-      // enqueue the buffer again
-      if (ioctl(_deviceFd, VIDIOC_QBUF, &buf) == -1) {
-        RTC_LOG(LS_INFO) << "Failed to enqueue capture buffer";
+      int height = _currentHeight;
+      int width = _currentWidth;
+      unsigned int screen_size = width*height*2;
+      std::vector<uint8_t> src(screen_size);
+      auto size = fread((void*)src.data(), 1, screen_size, fp_);
+      RTC_LOG(LS_INFO) << size;
+      if(size!=screen_size){
+	      RTC_LOG(LS_INFO) << "hoge";
+	      return true;
       }
+
+      // convert to to I420 if needed
+      VideoFrame captureFrame = IncomingFrame((unsigned char*)src.data(), screen_size, frameInfo);
+      DeliverCapturedFrame(captureFrame);
     }
   }
   usleep(0);
