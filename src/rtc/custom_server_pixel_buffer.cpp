@@ -112,7 +112,7 @@ bool CustomServerPixelBuffer::Init(XAtomCache* cache, Window window) {
 
   const int PIPE_BUF_SIZE=256;
   char  buf[PIPE_BUF_SIZE];
-  std::string cmd = "ffmpeg -i /home/tnakao/sample.mp4 2>&1";
+  std::string cmd = "ffmpeg -f v4l2 -i /dev/video0 2>&1";
   if ( (fp_=popen(cmd.c_str(),"r")) ==NULL) {
           return -1;
   }
@@ -131,7 +131,7 @@ bool CustomServerPixelBuffer::Init(XAtomCache* cache, Window window) {
           }
   }
 
-  cmd="ffmpeg -i /home/tnakao/sample.mp4 -f image2pipe -pix_fmt argb -vcodec rawvideo - 2>&1";
+  cmd="ffmpeg -f v4l2 -i /dev/video0 -f image2pipe -pix_fmt argb -vcodec rawvideo - 2>&1";
   if ( (fp_=popen(cmd.c_str(),"r")) ==NULL) {
 	  return -1;
   }
@@ -282,6 +282,7 @@ bool CustomServerPixelBuffer::CaptureRect(const DesktopRect& rect,
   //data = reinterpret_cast<uint8_t*>(image->data) +
   //rect.top() * image->bytes_per_line +
   //rect.left() * image->bits_per_pixel / 8;
+  //int src_stride = image->bytes_per_line;
   
   auto width = window_size_.width();
   height = window_size_.height();
@@ -290,14 +291,13 @@ bool CustomServerPixelBuffer::CaptureRect(const DesktopRect& rect,
   auto size = fread((void*)src.data(), 1, screen_size, fp_);
   RTC_LOG(LS_INFO) << size;
   if(size!=screen_size){
-	  RTC_LOG(LS_INFO) << "hoge";
-	  return true;
+          RTC_LOG(LS_INFO) << "hoge";
+          return true;
   }
   data = src.data();
-
-  // TODO:ffmpegに差し替える
-  // int src_stride = image->bytes_per_line;
   int src_stride = width * DesktopFrame::kBytesPerPixel;
+  
+
   int dst_x = rect.left(), dst_y = rect.top();
 
   uint8_t* dst_pos = frame->data() + frame->stride() * dst_y;
