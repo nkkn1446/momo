@@ -109,32 +109,33 @@ bool CustomServerPixelBuffer::Init(XAtomCache* cache, Window window) {
     return false;
   }
   // window_size_ = window_rect_.size();
+  window_size_.set(640,480);
 
-  const int PIPE_BUF_SIZE=256;
-  char  buf[PIPE_BUF_SIZE];
-  std::string cmd = "ffmpeg -f v4l2 -i /dev/video0 2>&1";
-  if ( (fp_=popen(cmd.c_str(),"r")) ==NULL) {
-          return -1;
-  }
-  std::string data;
-  while(fgets(buf, PIPE_BUF_SIZE, fp_) != NULL) {
-          data+=std::string(buf);
-  }
-  pclose(fp_);
+  //const int PIPE_BUF_SIZE=256;
+  //char  buf[PIPE_BUF_SIZE];
+  //std::string cmd = "ffmpeg -f v4l2 -i /dev/video0 2>&1";
+  //if ( (fp_=popen(cmd.c_str(),"r")) ==NULL) {
+  //        return -1;
+  //}
+  //std::string data;
+  //while(fgets(buf, PIPE_BUF_SIZE, fp_) != NULL) {
+  //        data+=std::string(buf);
+  //}
+  //pclose(fp_);
 
-  const char* pattern = " ([0-9]+)x([0-9]+)[,| ]";
-  std::regex re(pattern);
-  std::cmatch match;
-  if ( std::regex_search(data.c_str(), match, re) ) {
-          if(match.size()>=3){
-        	  window_size_.set(atoi(match.str(1).c_str()),atoi(match.str(2).c_str()));
-          }
-  }
+  //const char* pattern = " ([0-9]+)x([0-9]+)[,| ]";
+  //std::regex re(pattern);
+  //std::cmatch match;
+  //if ( std::regex_search(data.c_str(), match, re) ) {
+  //        if(match.size()>=3){
+  //      	  window_size_.set(atoi(match.str(1).c_str()),atoi(match.str(2).c_str()));
+  //        }
+  //}
 
-  cmd="ffmpeg -f v4l2 -i /dev/video0 -f image2pipe -pix_fmt argb -vcodec rawvideo - 2>&1";
-  if ( (fp_=popen(cmd.c_str(),"r")) ==NULL) {
-	  return -1;
-  }
+  //cmd="ffmpeg -f v4l2 -i /dev/video0 -f image2pipe -pix_fmt argb -vcodec rawvideo - 2>&1";
+  //if ( (fp_=popen(cmd.c_str(),"r")) ==NULL) {
+  //        return -1;
+  //}
 
   if (cache->IccProfile() != None) {
     // |window| is the root window when doing screen capture.
@@ -150,7 +151,7 @@ bool CustomServerPixelBuffer::Init(XAtomCache* cache, Window window) {
   }
 
   window_ = window;
-  // InitShm(attributes);
+  InitShm(attributes);
 
   return true;
 }
@@ -173,7 +174,7 @@ void CustomServerPixelBuffer::InitShm(const XWindowAttributes& attributes) {
   shm_segment_info_->readOnly = False;
   x_shm_image_ = XShmCreateImage(display_, default_visual, default_depth,
                                  ZPixmap, 0, shm_segment_info_,
-                                 window_rect_.width(), window_rect_.height());
+                                 window_size_.width(), window_size_.height());
   if (x_shm_image_) {
     shm_segment_info_->shmid =
         shmget(IPC_PRIVATE, x_shm_image_->bytes_per_line * x_shm_image_->height,
@@ -226,7 +227,7 @@ bool CustomServerPixelBuffer::InitPixmaps(int depth) {
     XErrorTrap error_trap(display_);
     shm_pixmap_ = XShmCreatePixmap(
         display_, window_, shm_segment_info_->shmaddr, shm_segment_info_,
-        window_rect_.width(), window_rect_.height(), depth);
+        window_size_.width(), window_size_.height(), depth);
     XSync(display_, False);
     if (error_trap.GetLastErrorAndDisable() != 0) {
       // |shm_pixmap_| is not not valid because the request was not processed
@@ -271,45 +272,31 @@ bool CustomServerPixelBuffer::CaptureRect(const DesktopRect& rect,
   uint8_t* data;
   int height;
 
-  //if (shm_pixmap_) {
-  //        XCopyArea(display_, window_, shm_pixmap_, shm_gc_, rect.left(),
-  //      		  rect.top(), rect.width(), rect.height(), rect.left(),
-  //      		  rect.top());
-  //        XSync(display_, False);
+  if (shm_pixmap_) {
+          XCopyArea(display_, window_, shm_pixmap_, shm_gc_, rect.left(),
+        		  rect.top(), rect.width(), rect.height(), rect.left(),
+        		  rect.top());
+          XSync(display_, False);
+  }
+
+  image = x_shm_image_;
+  data = reinterpret_cast<uint8_t*>(image->data) +
+  rect.top() * image->bytes_per_line +
+  rect.left() * image->bits_per_pixel / 8;
+  
+  //auto width = window_size_.width();
+  //height = window_size_.height();
+  //unsigned int screen_size = width*height*DesktopFrame::kBytesPerPixel;
+  //std::vector<uint8_t> src(screen_size);
+  //auto size = fread((void*)src.data(), 1, screen_size, fp_);
+  //// RTC_LOG(LS_INFO) << size;
+  //if(size!=screen_size){
+  //        RTC_LOG(LS_INFO) << "hoge";
+  //        return true;
   //}
-
-  //image = x_shm_image_;
-  //data = reinterpret_cast<uint8_t*>(image->data) +
-  //rect.top() * image->bytes_per_line +
-  //rect.left() * image->bits_per_pixel / 8;
-  //int src_stride = image->bytes_per_line;
+  //data = src.data();
   
-  auto width = window_size_.width();
-  height = window_size_.height();
-  unsigned int screen_size = width*height*DesktopFrame::kBytesPerPixel;
-  std::vector<uint8_t> src(screen_size);
-  auto size = fread((void*)src.data(), 1, screen_size, fp_);
-  RTC_LOG(LS_INFO) << size;
-  if(size!=screen_size){
-          RTC_LOG(LS_INFO) << "hoge";
-          return true;
-  }
-  data = src.data();
-  int src_stride = width * DesktopFrame::kBytesPerPixel;
-  
-
-  int dst_x = rect.left(), dst_y = rect.top();
-
-  uint8_t* dst_pos = frame->data() + frame->stride() * dst_y;
-  dst_pos += dst_x * DesktopFrame::kBytesPerPixel;
-
-  height = rect.height();
-  int row_bytes = rect.width() * DesktopFrame::kBytesPerPixel;
-  for (int y = 0; y < height; ++y) {
-    memcpy(dst_pos, data, row_bytes);
-    data += src_stride;
-    dst_pos += frame->stride();
-  }
+  memcpy(frame->data(), data, rect.width() * rect.height() * DesktopFrame::kBytesPerPixel);
 
   if (!icc_profile_.empty())
     frame->set_icc_profile(icc_profile_);
