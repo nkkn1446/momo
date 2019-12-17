@@ -28,6 +28,13 @@ namespace webrtc {
 
 namespace {
 
+enum CaptureArea {
+	kLeft = -30,
+	kTop = 0,
+	kWidth = 1280,
+	kHeight = 720,
+};
+
 // Returns the number of bits |mask| has to be shifted left so its last
 // (most-significant) bit set becomes the most-significant bit of the word.
 // When |mask| is 0 the function returns 31.
@@ -109,7 +116,7 @@ bool CustomServerPixelBuffer::Init(XAtomCache* cache, Window window) {
     return false;
   }
   // window_size_ = window_rect_.size();
-  window_size_.set(640,480);
+  window_size_.set(CaptureArea::kWidth,CaptureArea::kHeight);
 
   //const int PIPE_BUF_SIZE=256;
   //char  buf[PIPE_BUF_SIZE];
@@ -270,19 +277,20 @@ bool CustomServerPixelBuffer::CaptureRect(const DesktopRect& rect,
                                      DesktopFrame* frame) {
   XImage* image;
   uint8_t* data;
-  int height;
+  int32_t width = CaptureArea::kWidth;
+  int32_t height = CaptureArea::kHeight;
+  int32_t left = window_rect_.width() - width + CaptureArea::kLeft;
+  int32_t top = window_rect_.height() - height + CaptureArea::kTop;
 
   if (shm_pixmap_) {
-          XCopyArea(display_, window_, shm_pixmap_, shm_gc_, rect.left(),
-        		  rect.top(), rect.width(), rect.height(), rect.left(),
-        		  rect.top());
+          XCopyArea(display_, window_, shm_pixmap_, shm_gc_, left,
+        		  top, width, height, rect.left(),
+			  rect.top());
           XSync(display_, False);
   }
 
   image = x_shm_image_;
-  data = reinterpret_cast<uint8_t*>(image->data) +
-  rect.top() * image->bytes_per_line +
-  rect.left() * image->bits_per_pixel / 8;
+  data = reinterpret_cast<uint8_t*>(image->data);
   
   //auto width = window_size_.width();
   //height = window_size_.height();
@@ -296,7 +304,7 @@ bool CustomServerPixelBuffer::CaptureRect(const DesktopRect& rect,
   //}
   //data = src.data();
   
-  memcpy(frame->data(), data, rect.width() * rect.height() * DesktopFrame::kBytesPerPixel);
+  memcpy(frame->data(), data, CaptureArea::kWidth * CaptureArea::kHeight * DesktopFrame::kBytesPerPixel);
 
   if (!icc_profile_.empty())
     frame->set_icc_profile(icc_profile_);
