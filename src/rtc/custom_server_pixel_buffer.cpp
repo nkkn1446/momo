@@ -112,7 +112,7 @@ bool CustomServerPixelBuffer::Init(XAtomCache* cache, Window window) {
 
   const int PIPE_BUF_SIZE=256;
   char  buf[PIPE_BUF_SIZE];
-  std::string cmd = "ffmpeg -i /home/ubuntu/sample.mp4 2>&1";
+  std::string cmd = "ffmpeg -i /home/tnakao/sample.mp4 2>&1";
   if ( (fp_=popen(cmd.c_str(),"r")) ==NULL) {
           return -1;
   }
@@ -131,7 +131,7 @@ bool CustomServerPixelBuffer::Init(XAtomCache* cache, Window window) {
           }
   }
 
-  cmd="ffmpeg -i /home/ubuntu/sample.mp4 -f image2pipe -pix_fmt yuyv422 -vcodec rawvideo - 2>&1";
+  cmd="ffmpeg -i /home/tnakao/sample.mp4 -f image2pipe -pix_fmt argb -vcodec rawvideo - 2>&1";
   if ( (fp_=popen(cmd.c_str(),"r")) ==NULL) {
 	  return -1;
   }
@@ -285,7 +285,7 @@ bool CustomServerPixelBuffer::CaptureRect(const DesktopRect& rect,
   
   auto width = window_size_.width();
   height = window_size_.height();
-  unsigned int screen_size = width*height*2;
+  unsigned int screen_size = width*height*DesktopFrame::kBytesPerPixel;
   std::vector<uint8_t> src(screen_size);
   auto size = fread((void*)src.data(), 1, screen_size, fp_);
   RTC_LOG(LS_INFO) << size;
@@ -297,14 +297,14 @@ bool CustomServerPixelBuffer::CaptureRect(const DesktopRect& rect,
 
   // TODO:ffmpegに差し替える
   // int src_stride = image->bytes_per_line;
-  int src_stride = width * 2;
+  int src_stride = width * DesktopFrame::kBytesPerPixel;
   int dst_x = rect.left(), dst_y = rect.top();
 
   uint8_t* dst_pos = frame->data() + frame->stride() * dst_y;
-  dst_pos += dst_x * 2;
+  dst_pos += dst_x * DesktopFrame::kBytesPerPixel;
 
   height = rect.height();
-  int row_bytes = rect.width() * 2;
+  int row_bytes = rect.width() * DesktopFrame::kBytesPerPixel;
   for (int y = 0; y < height; ++y) {
     memcpy(dst_pos, data, row_bytes);
     data += src_stride;
