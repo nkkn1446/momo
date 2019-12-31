@@ -29,7 +29,7 @@ namespace webrtc {
 namespace {
 
 enum CaptureArea {
-	kLeft = -30,
+	kLeft = -100,
 	kTop = 0,
 	kWidth = 1280,
 	kHeight = 720,
