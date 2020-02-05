@@ -9,13 +9,18 @@
  */
 
 #include "window_capturer_frame.h"
+#include "custom_window_capturer.h"
 #include "modules/desktop_capture/desktop_capture_options.h"
+#include "modules/desktop_capture/desktop_capturer_differ_wrapper.h"
 
 namespace webrtc {
 
 WindowCapturerFrame::WindowCapturerFrame() {
-  capturer_ = DesktopCapturer::CreateWindowCapturer(
-		  DesktopCaptureOptions::CreateDefault());
+  auto options = DesktopCaptureOptions::CreateDefault();
+  capturer_ = std::unique_ptr<DesktopCapturer>(new CustomWindowCapturer(options));
+  if (capturer_ && options.detect_updated_region()) {
+  	capturer_.reset(new DesktopCapturerDifferWrapper(std::move(capturer_)));
+  }
   RTC_DCHECK(capturer_);
 
   capturer_->Start(this);

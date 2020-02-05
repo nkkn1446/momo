@@ -88,8 +88,8 @@ int main(int argc, char* argv[]) {
 #else
   rtc::scoped_refptr<rtc::AdaptedVideoTrackSource> capturer =
       // DeviceVideoCapturer::Create(cs.getWidth(), cs.getHeight(), cs.framerate);
-      new rtc::RefCountedObject<ScreenCapturerTrackSource>();
-      // new rtc::RefCountedObject<WindowCapturerTrackSource>();
+      // new rtc::RefCountedObject<ScreenCapturerTrackSource>();
+      new rtc::RefCountedObject<WindowCapturerTrackSource>();
 #endif
 #endif
   if (!capturer && !cs.no_video) {
