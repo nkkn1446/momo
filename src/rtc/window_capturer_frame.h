@@ -25,7 +25,7 @@ typedef std::function<void(std::unique_ptr<DesktopFrame>&&)> CaptureCallback;
 
 class WindowCapturerFrame : public DesktopCapturer::Callback {
  public:
-  WindowCapturerFrame();
+  WindowCapturerFrame(const std::string& window_title);
   webrtc::DesktopCapturer::SourceList
 	  GetScreenListAndSelectScreen();
   void Capturer(const CaptureCallback& callback);

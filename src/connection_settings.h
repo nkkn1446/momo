@@ -44,6 +44,7 @@ struct ConnectionSettings {
   int sora_spotlight = -1;
 
   std::string test_document_root;
+  std::string test_custom_window_title;
 
   std::string ayame_signaling_host;
   std::string ayame_room_id;
@@ -115,6 +116,7 @@ struct ConnectionSettings {
        << "\n";
     os << "sora_metadata: " << cs.sora_metadata << "\n";
     os << "test_document_root: " << cs.test_document_root << "\n";
+    os << "test_custom_window_title: " << cs.test_custom_window_title << "\n";
     return os;
   }
 };

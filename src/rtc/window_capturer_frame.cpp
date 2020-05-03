@@ -15,7 +15,7 @@
 
 namespace webrtc {
 
-WindowCapturerFrame::WindowCapturerFrame() {
+WindowCapturerFrame::WindowCapturerFrame(const std::string& window_title) {
   auto options = DesktopCaptureOptions::CreateDefault();
   capturer_ = std::unique_ptr<DesktopCapturer>(new CustomWindowCapturer(options));
   if (capturer_ && options.detect_updated_region()) {
@@ -27,8 +27,10 @@ WindowCapturerFrame::WindowCapturerFrame() {
 
   DesktopCapturer::SourceList sources;
   capturer_->GetSourceList(&sources);
-  RTC_LOG(LS_INFO) << sources.size();
-  auto it = sources.begin() + 1;
+  auto it = find_if(sources.begin(), sources.end(), [window_title](const auto& source){return source.title.find(window_title) != std::string::npos;});
+  if (it == sources.end()) {
+          RTC_LOG(LS_INFO) << __FUNCTION__;
+  }
   if (!capturer_->SelectSource(it->id)) {
           RTC_LOG(LS_INFO) << __FUNCTION__;
   }

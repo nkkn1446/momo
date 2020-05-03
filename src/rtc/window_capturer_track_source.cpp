@@ -21,8 +21,8 @@
 #include "third_party/libyuv/include/libyuv/planar_functions.h"
 #include "third_party/libyuv/include/libyuv/scale.h"
 
-WindowCapturerTrackSource::DesktopCaptureImpl::DesktopCaptureImpl() : 
-	frame_() {}
+WindowCapturerTrackSource::DesktopCaptureImpl::DesktopCaptureImpl(const ConnectionSettings& cs) : 
+	frame_(cs.test_custom_window_title) {}
 WindowCapturerTrackSource::DesktopCaptureImpl::~DesktopCaptureImpl() {}
 
 void WindowCapturerTrackSource::DesktopCaptureImpl::StartCapture() {
@@ -61,9 +61,9 @@ bool WindowCapturerTrackSource::DesktopCaptureImpl::CaptureProcess() {
 
 }
 
-WindowCapturerTrackSource::WindowCapturerTrackSource() :
+WindowCapturerTrackSource::WindowCapturerTrackSource(const ConnectionSettings& cs) :
       AdaptedVideoTrackSource(4),
-      dcm_(new rtc::RefCountedObject<DesktopCaptureImpl>()) {
+      dcm_(new rtc::RefCountedObject<DesktopCaptureImpl>(cs)) {
   dcm_->RegisterCaptureDataCallback(this);
   dcm_->StartCapture();
 }

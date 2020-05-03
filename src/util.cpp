@@ -222,6 +222,8 @@ void Util::parseArgs(int argc,
   test_app
       ->add_option("--document-root", cs.test_document_root, "配信ディレクトリ")
       ->check(CLI::ExistingDirectory);
+  test_app
+      ->add_option("--custom-window-title", cs.test_custom_window_title, "（Custom）キャプチャウィンドウ名");
 
   ayame_app
       ->add_option("SIGNALING-URL", cs.ayame_signaling_host,
