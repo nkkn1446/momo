@@ -9,7 +9,6 @@
  */
 
 #include "device_video_capturer.h"
-#include "custom_video_capture.h"
 
 #include <stdint.h>
 #include <memory>
@@ -40,15 +39,10 @@ bool DeviceVideoCapturer::Init(size_t width,
     return false;
   }
 
-  // vcm_ = webrtc::VideoCaptureFactory::Create(unique_name);
-  rtc::scoped_refptr<webrtc::CustomVideoCaptureModule> implementation(
-      new rtc::RefCountedObject<webrtc::CustomVideoCaptureModule>());
-
-  if (implementation->Init(unique_name) != 0)
+  vcm_ = webrtc::VideoCaptureFactory::Create(unique_name);
+  if (!vcm_) {
     return false;
-
-  vcm_ = implementation;
-
+  }
   vcm_->RegisterCaptureDataCallback(this);
 
   device_info->GetCapability(vcm_->CurrentDeviceName(), 0, capability_);
@@ -68,9 +62,9 @@ bool DeviceVideoCapturer::Init(size_t width,
   return true;
 }
 
-rtc::scoped_refptr<rtc::AdaptedVideoTrackSource>
+rtc::scoped_refptr<DeviceVideoCapturer>
 DeviceVideoCapturer::Create(size_t width, size_t height, size_t target_fps) {
-  rtc::scoped_refptr<rtc::AdaptedVideoTrackSource> capturer;
+  rtc::scoped_refptr<DeviceVideoCapturer> capturer;
   std::unique_ptr<webrtc::VideoCaptureModule::DeviceInfo> info(
       webrtc::VideoCaptureFactory::CreateDeviceInfo());
   if (!info) {
@@ -90,7 +84,7 @@ DeviceVideoCapturer::Create(size_t width, size_t height, size_t target_fps) {
   return nullptr;
 }
 
-rtc::scoped_refptr<rtc::AdaptedVideoTrackSource> DeviceVideoCapturer::Create(
+rtc::scoped_refptr<DeviceVideoCapturer> DeviceVideoCapturer::Create(
     size_t width,
     size_t height,
     size_t target_fps,

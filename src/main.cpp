@@ -23,7 +23,6 @@
 #include "v4l2_video_capturer/v4l2_video_capturer.h"
 #else
 #include "rtc/device_video_capturer.h"
-#include "rtc/screen_capturer_track_source.h"
 #include "rtc/window_capturer_track_source.h"
 #endif
 #endif
@@ -88,7 +87,6 @@ int main(int argc, char* argv[]) {
 #else
   rtc::scoped_refptr<rtc::AdaptedVideoTrackSource> capturer =
       // DeviceVideoCapturer::Create(cs.getWidth(), cs.getHeight(), cs.framerate);
-      // new rtc::RefCountedObject<ScreenCapturerTrackSource>();
       new rtc::RefCountedObject<WindowCapturerTrackSource>(cs);
 #endif
 #endif
