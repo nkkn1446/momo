@@ -20,9 +20,17 @@
 #include "rtc_base/checks.h"
 #include "rtc_base/logging.h"
 
+#if !defined(__arm__) || defined(__aarch64__) || defined(__ARM_NEON__)
+#include "modules/video_coding/codecs/av1/libaom_av1_decoder.h"
+#endif
+
 #if USE_JETSON_ENCODER
 #include "hwenc_jetson/jetson_video_decoder.h"
+#elif USE_MMAL_ENCODER
+#include "hwenc_mmal/mmal_h264_decoder.h"
 #endif
+
+#include "h264_format.h"
 
 namespace {
 
@@ -47,8 +55,24 @@ std::vector<webrtc::SdpVideoFormat> HWVideoDecoderFactory::GetSupportedFormats()
   formats.push_back(webrtc::SdpVideoFormat(cricket::kVp8CodecName));
   for (const webrtc::SdpVideoFormat& format : webrtc::SupportedVP9Codecs())
     formats.push_back(format);
-  for (const webrtc::SdpVideoFormat& h264_format : webrtc::SupportedH264Codecs())
+
+  std::vector<webrtc::SdpVideoFormat> h264_codecs = {
+      CreateH264Format(webrtc::H264::kProfileBaseline, webrtc::H264::kLevel3_1,
+                       "1"),
+      CreateH264Format(webrtc::H264::kProfileBaseline, webrtc::H264::kLevel3_1,
+                       "0"),
+      CreateH264Format(webrtc::H264::kProfileConstrainedBaseline,
+                       webrtc::H264::kLevel3_1, "1"),
+      CreateH264Format(webrtc::H264::kProfileConstrainedBaseline,
+                       webrtc::H264::kLevel3_1, "0")};
+
+  for (const webrtc::SdpVideoFormat& h264_format : h264_codecs)
     formats.push_back(h264_format);
+
+#if !defined(__arm__) || defined(__aarch64__) || defined(__ARM_NEON__)
+  formats.push_back(webrtc::SdpVideoFormat(cricket::kAv1CodecName));
+#endif
+
   return formats;
 }
 
@@ -76,6 +100,16 @@ std::unique_ptr<webrtc::VideoDecoder> HWVideoDecoderFactory::CreateVideoDecoder(
     return webrtc::VP8Decoder::Create();
   if (absl::EqualsIgnoreCase(format.name, cricket::kVp9CodecName))
     return webrtc::VP9Decoder::Create();
+#if USE_MMAL_ENCODER
+  if (absl::EqualsIgnoreCase(format.name, cricket::kH264CodecName))
+    return std::unique_ptr<webrtc::VideoDecoder>(
+        absl::make_unique<MMALH264Decoder>());
+#endif
+#endif
+
+#if !defined(__arm__) || defined(__aarch64__) || defined(__ARM_NEON__)
+  if (absl::EqualsIgnoreCase(format.name, cricket::kAv1CodecName))
+    return webrtc::CreateLibaomAv1Decoder();
 #endif
 
   RTC_NOTREACHED();

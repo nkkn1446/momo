@@ -1,18 +1,18 @@
 #ifndef P2P_SERVER_H_
 #define P2P_SERVER_H_
 
-#include <memory>
-#include <string>
-
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/system/error_code.hpp>
+#include <memory>
+#include <string>
 
 #include "connection_settings.h"
 #include "rtc/manager.h"
 #include "util.h"
 
 class P2PServer : public std::enable_shared_from_this<P2PServer> {
+  boost::asio::io_context& ioc_;
   boost::asio::ip::tcp::acceptor acceptor_;
   boost::asio::ip::tcp::socket socket_;
   std::shared_ptr<std::string const> doc_root_;

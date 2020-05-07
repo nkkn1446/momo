@@ -1,6 +1,3 @@
-#ifndef _MSC_VER
-#include <unistd.h>
-#endif
 #include <atomic>
 #include <condition_variable>
 #include <csignal>
@@ -16,16 +13,22 @@
 #include "ros/ros_video_capture.h"
 #include "signal_listener.h"
 #else
-#ifdef __APPLE__
+#if defined(__APPLE__)
 #include "mac_helper/mac_capturer.h"
-#else
-#if USE_MMAL_ENCODER | USE_JETSON_ENCODER
-#include "v4l2_video_capturer/v4l2_video_capturer.h"
+//#elif defined(__linux__)
+//#if USE_MMAL_ENCODER
+//#include "hwenc_mmal/mmal_v4l2_capture.h"
+//#endif
+//#include "v4l2_video_capturer/v4l2_video_capturer.h"
 #else
 #include "rtc/device_video_capturer.h"
 #include "rtc/window_capturer_track_source.h"
 #endif
 #endif
+
+#include "serial_data_channel/serial_data_manager.h"
+
+#if USE_SDL2
 #include "sdl_renderer/sdl_renderer.h"
 #endif
 
@@ -41,23 +44,12 @@ const size_t kDefaultMaxLogFileSize = 10 * 1024 * 1024;
 int main(int argc, char* argv[]) {
   ConnectionSettings cs;
 
-  bool is_daemon = false;
   bool use_test = false;
   bool use_ayame = false;
   bool use_sora = false;
   int log_level = rtc::LS_NONE;
 
-  Util::parseArgs(argc, argv, is_daemon, use_test, use_ayame, use_sora,
-                  log_level, cs);
-
-#ifndef _MSC_VER
-  if (is_daemon) {
-    if (daemon(1, 0) == -1) {
-      std::cerr << "failed to launch momo daemon" << std::endl;
-      return -1;
-    }
-  }
-#endif
+  Util::parseArgs(argc, argv, use_test, use_ayame, use_sora, log_level, cs);
 
   rtc::LogMessage::LogToDebug((rtc::LoggingSeverity)log_level);
   rtc::LogMessage::LogTimestamps();
@@ -66,8 +58,6 @@ int main(int argc, char* argv[]) {
 #if USE_ROS
   std::unique_ptr<rtc::LogSink> log_sink(new ROSLogSink());
   rtc::LogMessage::AddLogToStream(log_sink.get(), rtc::LS_INFO);
-  rtc::scoped_refptr<ROSVideoCapture> capturer(
-      new rtc::RefCountedObject<ROSVideoCapture>(cs));
 #else
   std::unique_ptr<rtc::FileRotatingLogSink> log_sink(
       new rtc::FileRotatingLogSink("./", "webrtc_logs", kDefaultMaxLogFileSize,
@@ -78,24 +68,46 @@ int main(int argc, char* argv[]) {
     return 1;
   }
   rtc::LogMessage::AddLogToStream(log_sink.get(), rtc::LS_INFO);
-#ifdef __APPLE__
-  rtc::scoped_refptr<MacCapturer> capturer =
-      MacCapturer::Create(cs.getWidth(), cs.getHeight(), cs.framerate, cs.video_device);
-#else
-#if USE_MMAL_ENCODER || USE_JETSON_ENCODER
-  rtc::scoped_refptr<V4L2VideoCapture> capturer = V4L2VideoCapture::Create(cs);
-#else
-  rtc::scoped_refptr<rtc::AdaptedVideoTrackSource> capturer =
-      // DeviceVideoCapturer::Create(cs.getWidth(), cs.getHeight(), cs.framerate);
-      new rtc::RefCountedObject<WindowCapturerTrackSource>(cs);
 #endif
+
+  auto capturer = ([&]() -> rtc::scoped_refptr<ScalableVideoTrackSource> {
+    if (cs.no_video_device) {
+      return nullptr;
+    }
+
+#if USE_ROS
+    rtc::scoped_refptr<ROSVideoCapture> capturer(
+        new rtc::RefCountedObject<ROSVideoCapture>(cs));
+    return capturer;
+#else  // USE_ROS
+    auto size = cs.getSize();
+#if defined(__APPLE__)
+    return MacCapturer::Create(size.width, size.height, cs.framerate,
+                               cs.video_device);
+//#elif defined(__linux__)
+//#if USE_MMAL_ENCODER
+//    if (cs.use_native) {
+//      return MMALV4L2Capture::Create(cs);
+//    } else {
+//      return V4L2VideoCapture::Create(cs);
+//    }
+//#else
+//    return V4L2VideoCapture::Create(cs);
+//#endif
+#else
+    // return DeviceVideoCapturer::Create(size.width, size.height, cs.framerate,
+    //                                    cs.video_device);
+    return new rtc::RefCountedObject<WindowCapturerTrackSource>(cs);
 #endif
-  if (!capturer && !cs.no_video) {
+#endif  // USE_ROS
+  })();
+
+  if (!capturer && !cs.no_video_device) {
     std::cerr << "failed to create capturer" << std::endl;
     return 1;
   }
-#endif
 
+#if USE_SDL2
   std::unique_ptr<SDLRenderer> sdl_renderer = nullptr;
   if (cs.use_sdl) {
     sdl_renderer.reset(
@@ -104,25 +116,44 @@ int main(int argc, char* argv[]) {
 
   std::unique_ptr<RTCManager> rtc_manager(
       new RTCManager(cs, std::move(capturer), sdl_renderer.get()));
+#else
+  std::unique_ptr<RTCManager> rtc_manager(
+      new RTCManager(cs, std::move(capturer), nullptr));
+#endif
 
   {
     boost::asio::io_context ioc{1};
+
+    std::unique_ptr<RTCDataManager> data_manager = nullptr;
+    if (!cs.serial_device.empty()) {
+      data_manager =
+          SerialDataManager::Create(ioc, cs.serial_device, cs.serial_rate);
+      if (!data_manager) {
+        return 1;
+      }
+      rtc_manager->SetDataManager(data_manager.get());
+    }
 
     boost::asio::signal_set signals(ioc, SIGINT, SIGTERM);
     signals.async_wait(
         [&](const boost::system::error_code&, int) { ioc.stop(); });
 
     if (use_sora) {
-      const boost::asio::ip::tcp::endpoint endpoint{
-          boost::asio::ip::make_address("127.0.0.1"),
-          static_cast<unsigned short>(cs.port)};
-      std::make_shared<SoraServer>(ioc, endpoint, rtc_manager.get(), cs)->run();
+      if (cs.sora_port >= 0) {
+        const boost::asio::ip::tcp::endpoint endpoint{
+            boost::asio::ip::make_address("127.0.0.1"),
+            static_cast<unsigned short>(cs.sora_port)};
+        std::make_shared<SoraServer>(ioc, endpoint, rtc_manager.get(), cs)
+            ->run();
+      } else {
+        std::make_shared<SoraServer>(ioc, rtc_manager.get(), cs)->run();
+      }
     }
 
     if (use_test) {
       const boost::asio::ip::tcp::endpoint endpoint{
           boost::asio::ip::make_address("0.0.0.0"),
-          static_cast<unsigned short>(cs.port)};
+          static_cast<unsigned short>(cs.test_port)};
       std::make_shared<P2PServer>(
           ioc, endpoint, std::make_shared<std::string>(cs.test_document_root),
           rtc_manager.get(), cs)
@@ -130,19 +161,16 @@ int main(int argc, char* argv[]) {
     }
 
     if (use_ayame) {
-      const boost::asio::ip::tcp::endpoint endpoint{
-          boost::asio::ip::make_address("127.0.0.1"),
-          static_cast<unsigned short>(cs.port)};
-      std::make_shared<AyameServer>(ioc, endpoint, rtc_manager.get(), cs)
-          ->run();
+      std::make_shared<AyameServer>(ioc, rtc_manager.get(), cs)->run();
     }
 
+#if USE_SDL2
     if (sdl_renderer) {
-      sdl_renderer->SetDispatchFunction(
-        [&ioc](std::function<void ()> f) {
-          if (ioc.stopped()) return;
-          boost::asio::dispatch(ioc.get_executor(), f);
-        });
+      sdl_renderer->SetDispatchFunction([&ioc](std::function<void()> f) {
+        if (ioc.stopped())
+          return;
+        boost::asio::dispatch(ioc.get_executor(), f);
+      });
 
       ioc.run();
 
@@ -150,10 +178,15 @@ int main(int argc, char* argv[]) {
     } else {
       ioc.run();
     }
+#else
+    ioc.run();
+#endif
   }
 
   //この順番は綺麗に落ちるけど、あまり安全ではない
+#if USE_SDL2
   sdl_renderer = nullptr;
+#endif
   rtc_manager = nullptr;
 
   return 0;

@@ -1,8 +1,16 @@
 #include "sora_websocket_client.h"
 
+#include <fstream>
+#include <sstream>
+
+// boost
 #include <boost/beast/websocket/stream.hpp>
 
+// json
 #include <nlohmann/json.hpp>
+
+#include "momo_version.h"
+#include "ssl_verifier.h"
 #include "url_parts.h"
 #include "util.h"
 
@@ -27,7 +35,7 @@ bool SoraWebsocketClient::parseURL(URLParts& parts) const {
 
 boost::asio::ssl::context SoraWebsocketClient::createSSLContext() const {
   boost::asio::ssl::context ctx(boost::asio::ssl::context::tlsv12);
-  ctx.set_default_verify_paths();
+  //ctx.set_default_verify_paths();
   ctx.set_options(boost::asio::ssl::context::default_workarounds |
                   boost::asio::ssl::context::no_sslv2 |
                   boost::asio::ssl::context::no_sslv3 |
@@ -67,10 +75,23 @@ void SoraWebsocketClient::reset() {
 
   if (parseURL(parts_)) {
     auto ssl_ctx = createSSLContext();
-    boost::beast::websocket::stream<
-        boost::asio::ssl::stream<boost::asio::ip::tcp::socket>>
-        wss(ioc_, ssl_ctx);
     ws_.reset(new Websocket(ioc_, std::move(ssl_ctx)));
+    ws_->nativeSecureSocket().next_layer().set_verify_mode(
+        boost::asio::ssl::verify_peer);
+    ws_->nativeSecureSocket().next_layer().set_verify_callback(
+        [insecure = conn_settings_.insecure](
+            bool preverified, boost::asio::ssl::verify_context& ctx) {
+          if (preverified) {
+            return true;
+          }
+          // insecure の場合は証明書をチェックしない
+          if (insecure) {
+            return true;
+          }
+          X509* cert = X509_STORE_CTX_get_current_cert(ctx.native_handle());
+          return SSLVerifier::VerifyX509(cert);
+        });
+
     // SNI の設定を行う
     if (!SSL_set_tlsext_host_name(
             ws_->nativeSecureSocket().next_layer().native_handle(),
@@ -217,33 +238,58 @@ void SoraWebsocketClient::onHandshake(boost::system::error_code ec) {
 }
 
 void SoraWebsocketClient::doSendConnect() {
+  const auto& cs = conn_settings_;
   json json_message = {
       {"type", "connect"},
-      {"role", "upstream"},
-      {"channel_id", conn_settings_.sora_channel_id},
+      {"role", cs.sora_role},
+      {"channel_id", cs.sora_channel_id},
+      {"sora_client", MomoVersion::GetClientName()},
+      {"libwebrtc", MomoVersion::GetLibwebrtcName()},
+      {"environment", MomoVersion::GetEnvironmentName()},
   };
 
-  if (conn_settings_.sora_multistream) {
+  if (cs.sora_multistream) {
     json_message["multistream"] = true;
   }
 
-  if (conn_settings_.sora_spotlight > 0) {
+  if (cs.sora_spotlight > 0) {
     json_message["multistream"] = true;
-    json_message["spotlight"] = conn_settings_.sora_spotlight;
+    json_message["spotlight"] = cs.sora_spotlight;
   }
 
-  if (!conn_settings_.sora_metadata.is_null()) {
-    json_message["metadata"] = conn_settings_.sora_metadata;
+  if (!cs.sora_metadata.is_null()) {
+    json_message["metadata"] = cs.sora_metadata;
   }
 
-  json_message["video"]["codec_type"] = conn_settings_.video_codec;
-  if (conn_settings_.video_bitrate != 0) {
-    json_message["video"]["bit_rate"] = conn_settings_.video_bitrate;
+  if (!cs.sora_video) {
+    // video: false の場合はそのまま設定
+    json_message["video"] = false;
+  } else if (cs.sora_video && cs.sora_video_codec.empty() &&
+             cs.sora_video_bitrate == 0) {
+    // video: true の場合、その他のオプションの設定が行われてなければ true を設定
+    json_message["video"] = true;
+  } else {
+    // それ以外はちゃんとオプションを設定する
+    if (!cs.sora_video_codec.empty()) {
+      json_message["video"]["codec_type"] = cs.sora_video_codec;
+    }
+    if (cs.sora_video_bitrate != 0) {
+      json_message["video"]["bit_rate"] = cs.sora_video_bitrate;
+    }
   }
 
-  json_message["audio"]["codec_type"] = conn_settings_.audio_codec;
-  if (conn_settings_.audio_bitrate != 0) {
-    json_message["audio"]["bit_rate"] = conn_settings_.audio_bitrate;
+  if (!cs.sora_audio) {
+    json_message["audio"] = false;
+  } else if (cs.sora_audio && cs.sora_audio_codec.empty() &&
+             cs.sora_audio_bitrate == 0) {
+    json_message["audio"] = true;
+  } else {
+    if (!cs.sora_audio_codec.empty()) {
+      json_message["audio"]["codec_type"] = cs.sora_audio_codec;
+    }
+    if (cs.sora_audio_bitrate != 0) {
+      json_message["audio"]["bit_rate"] = cs.sora_audio_bitrate;
+    }
   }
 
   ws_->sendText(json_message.dump());
@@ -251,6 +297,13 @@ void SoraWebsocketClient::doSendConnect() {
 void SoraWebsocketClient::doSendPong() {
   json json_message = {{"type", "pong"}};
   ws_->sendText(json_message.dump());
+}
+void SoraWebsocketClient::doSendPong(
+    const rtc::scoped_refptr<const webrtc::RTCStatsReport>& report) {
+  std::string stats = report->ToJson();
+  json json_message = {{"type", "pong"}, {"stats", stats}};
+  std::string str = R"({"type":"pong","stats":)" + stats + "}";
+  ws_->sendText(std::move(str));
 }
 
 void SoraWebsocketClient::createPeerFromConfig(json jconfig) {
@@ -320,29 +373,27 @@ void SoraWebsocketClient::onRead(boost::system::error_code ec,
   if (type == "offer") {
     answer_sent_ = false;
     createPeerFromConfig(json_message["config"]);
-    const std::string sdp = json_message["sdp"];
+    const std::string sdp = json_message["sdp"].get<std::string>();
     connection_->setOffer(sdp);
   } else if (type == "update") {
-    const std::string sdp = json_message["sdp"];
+    const std::string sdp = json_message["sdp"].get<std::string>();
     connection_->setOffer(sdp);
   } else if (type == "notify") {
-    const std::string event_type = json_message["event_type"];
+    const std::string event_type =
+        json_message["event_type"].get<std::string>();
     if (event_type == "connection.created" ||
         event_type == "connection.destroyed") {
-      RTC_LOG(LS_INFO) << __FUNCTION__ 
-                        << ": event_type=" << event_type
-                        << ": client_id=" << json_message["client_id"]
-                        << ": connection_id=" << json_message["connection_id"];
+      RTC_LOG(LS_INFO) << __FUNCTION__ << ": event_type=" << event_type
+                       << ": client_id=" << json_message["client_id"]
+                       << ": connection_id=" << json_message["connection_id"];
     } else if (event_type == "network.status") {
-      RTC_LOG(LS_INFO) << __FUNCTION__ 
-                        << ": event_type=" << event_type
-                        << ": unstable_level=" << json_message["unstable_level"];
+      RTC_LOG(LS_INFO) << __FUNCTION__ << ": event_type=" << event_type
+                       << ": unstable_level=" << json_message["unstable_level"];
     } else if (event_type == "spotlight.changed") {
-      RTC_LOG(LS_INFO) << __FUNCTION__ 
-                        << ": event_type=" << event_type
-                        << ": client_id=" << json_message["client_id"]
-                        << ": connection_id=" << json_message["connection_id"]
-                        << ": spotlight_id=" << json_message["spotlight_id"];
+      RTC_LOG(LS_INFO) << __FUNCTION__ << ": event_type=" << event_type
+                       << ": client_id=" << json_message["client_id"]
+                       << ": connection_id=" << json_message["connection_id"]
+                       << ": spotlight_id=" << json_message["spotlight_id"];
     }
   } else if (type == "ping") {
     if (rtc_state_ != webrtc::PeerConnectionInterface::IceConnectionState::
@@ -350,7 +401,16 @@ void SoraWebsocketClient::onRead(boost::system::error_code ec,
       return;
     }
     watchdog_.reset();
-    doSendPong();
+    bool stats = json_message.value("stats", false);
+    if (stats) {
+      connection_->getStats(
+          [this](
+              const rtc::scoped_refptr<const webrtc::RTCStatsReport>& report) {
+            doSendPong(report);
+          });
+    } else {
+      doSendPong();
+    }
   }
 }
 

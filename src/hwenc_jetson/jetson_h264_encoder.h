@@ -12,15 +12,15 @@
 #ifndef Jetson_H264_ENCODER_H_
 #define Jetson_H264_ENCODER_H_
 
-#include "NvJpegDecoder.h"
-#include "NvVideoConverter.h"
-#include "NvVideoEncoder.h"
-
 #include <linux/videodev2.h>
+
 #include <chrono>
 #include <memory>
 #include <queue>
 
+#include "NvJpegDecoder.h"
+#include "NvVideoConverter.h"
+#include "NvVideoEncoder.h"
 #include "api/video_codecs/video_encoder.h"
 #include "common_video/h264/h264_bitstream_parser.h"
 #include "common_video/include/bitrate_adjuster.h"
@@ -52,14 +52,16 @@ class JetsonH264Encoder : public webrtc::VideoEncoder {
                 int32_t h,
                 int64_t rtms,
                 int64_t ntpms,
-                int64_t ts,
+                int64_t tsus,
+                int64_t rtpts,
                 webrtc::VideoRotation r,
                 absl::optional<webrtc::ColorSpace> c)
         : width(w),
           height(h),
           render_time_ms(rtms),
           ntp_time_ms(ntpms),
-          timestamp(ts),
+          timestamp_us(tsus),
+          timestamp_rtp(rtpts),
           rotation(r),
           color_space(c) {}
 
@@ -67,7 +69,8 @@ class JetsonH264Encoder : public webrtc::VideoEncoder {
     int32_t height;
     int64_t render_time_ms;
     int64_t ntp_time_ms;
-    int64_t timestamp;
+    int64_t timestamp_us;
+    int64_t timestamp_rtp;
     webrtc::VideoRotation rotation;
     absl::optional<webrtc::ColorSpace> color_space;
   };

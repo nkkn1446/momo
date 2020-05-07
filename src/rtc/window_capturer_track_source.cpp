@@ -62,7 +62,6 @@ bool WindowCapturerTrackSource::DesktopCaptureImpl::CaptureProcess() {
 }
 
 WindowCapturerTrackSource::WindowCapturerTrackSource(const ConnectionSettings& cs) :
-      AdaptedVideoTrackSource(4),
       dcm_(new rtc::RefCountedObject<DesktopCaptureImpl>(cs)) {
   dcm_->RegisterCaptureDataCallback(this);
   dcm_->StartCapture();

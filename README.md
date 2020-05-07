@@ -13,11 +13,18 @@ In other languages, we won't be able to deal with them. Thank you for your under
 
 WebRTC Native Client Momo は libwebrtc を利用しブラウザなしで様々な環境で動作する WebRTC ネイティブクライアントです。
 
+https://momo.shiguredo.jp/
+
 ### ハードウェアエンコーダへの対応
 
 - Raspberry Pi の GPU に積まれている H.264 ハードウェアエンコーダー機能を利用することが可能です
-- macOS に積まれている [VideoToolbox](https://developer.apple.com/documentation/videotoolbox) の H.264 ハードウェアエンコーダー機能を利用することが可能です
-- Jetson Nano に搭載されている H.264 ハードウェアエンコーダー機能を利用することで H.264 を 4K@30 での配信が可能です。
+- Apple macOS に搭載されている H.264 ハードウェアエンコーダー機能を [VideoToolbox](https://developer.apple.com/documentation/videotoolbox) 経由で利用しています
+- NVIDIA Jetson Nano に搭載されている H.264 ハードウェアエンコーダー機能を利用することで 4K@30 での配信が可能です
+- NVIDIA ビデオカードに搭載されている H.264 ハードウェアエンコーダー機能を [NVIDIA VIDEO CODEC SDK](https://developer.nvidia.com/nvidia-video-codec-sdk) 経由で利用しています
+
+### データチャネル経由でのシリアルの読み書き
+
+Momo はデータチャネルを利用しシリアルに直接読み書きが可能です。信頼性より低遅延を優先したい場合の利用を想定しています。
 
 ### SDL を利用した音声や映像の受信
 
@@ -26,6 +33,14 @@ Momo を GUI 環境で利用した場合、[Simple DirectMedia Layer](https://ww
 ### ROS への対応
 
 [ROS](http://www.ros.org/) ノードとしても利用可能です。
+
+### AV1 への対応
+
+Momo 同士で SDL 機能を利用して libwebrtc が対応している AV1 が利用可能です。
+
+## 動画
+
+[WebRTC Native Client Momo と Jetson Nano で 4K@30 配信](https://www.youtube.com/watch?v=z05bWtsgDPY)
 
 ## OpenMomo プロジェクトについて
 
@@ -49,47 +64,65 @@ Momo はオープンソースソフトウェアですが、開発については
 
 ## バイナリ提供について
 
-4 種類のバイナリを配布しています。
+以下からダウンロードが可能です。
 
-- Raspberry Raspbian Buster ARMv7
-- Raspberry Raspbian Buster ARMv6
-- Jetson Nano Ubuntu 18.04 ARMv8
-- macOS 10.15 x86_64
+https://github.com/shiguredo/momo/releases
 
 ## 動作環境
 
 - Raspbian Buster ARMv7
-    - Raspberry Pi 3 B/B+ で動作
+    - Raspberry Pi 4
+    - Raspberry Pi 3
+    - Raspberry Pi 2
 - Raspbian Buster ARMv6
-    - Raspberry Pi Zero W/WH で動作
+    - Raspberry Pi Zero
+    - Raspberry Pi 1
 - Ubuntu 18.04 x86_64
-- Ubuntu 18.04 ARMv8
+- Ubuntu 18.04 ARMv8 Jetson Nano
     - [NVIDIA Jetson Nano](https://www.nvidia.com/ja-jp/autonomous-machines/embedded-systems/jetson-nano/)
+- macOS 10.15 x86_64 以降
+- Windows 10.1809 x86_64 以降
+
+### 以下はビルドが通ること以外は確認していません
+
 - Ubuntu 16.04 x86_64 ROS Kinetic
     - http://wiki.ros.org/kinetic
-- Ubuntu 16.04 ARMv7 ROS Kinetic
-    - Raspberry Pi 3 B+
-- macOS 10.14 x86_64
 
 ## 使ってみる
 
 Momo を使ってみたい人は [USE.md](doc/USE.md) をお読みください。
 
-## ビルドにチャレンジする
+## ビルドする
 
-- Linux 版 Momo のビルドに挑戦したい人は [BUILD_LINUX.md](doc/BUILD_LINUX.md) をお読みください
-- macOS 版 Momo のビルドに挑戦したい人は [BUILD_MACOS.md](doc/BUILD_MACOS.md) をお読みください
+- Linux 版 Momo のビルドしたい人は [BUILD_LINUX.md](doc/BUILD_LINUX.md) をお読みください
+- macOS 版 Momo のビルドしたい人は [BUILD_MACOS.md](doc/BUILD_MACOS.md) をお読みください
+- Windows 版 Momo のビルドしたい人は [BUILD_WINDOWS.md](doc/BUILD_WINDOWS.md) をお読みください
 
 ## パッケージを作成する
 
 パッケージ作成したい人は [PACKAGE.md](doc/PACKAGE.md) をお読みください。
+
+## Q&A
+
+[QA.md](doc/QA.md) をお読みください。
+
+## バージョン番号について
+
+```
+YYYY.RELEASE[.FIX]
+```
+
+- YYYY は年
+- RELEASE はその年にリリースした回数
+- FIX はオプションでバグフィックス対応のみのアップデートに利用
 
 ## ライセンス
 
 Apache License 2.0
 
 ```
-Copyright 2018-2019, Shiguredo Inc, tnoho and melpon and kdxu
+Copyright 2015-2020, tnoho (Original Author)
+Copyright 2018-2020, Shiguredo Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -104,33 +137,90 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
+## 優先実装
+
+優先実装とは Sora のライセンスを契約頂いているお客様限定で Momo の実装予定機能を有償にて前倒しで実装することです。
+
+- Windows 版 OSS 化
+    - [スロースネットワークス株式会社](http://www.sloth-networks.co.jp) 様
+- WebRTC's Statistics 対応
+    - 現時点では企業名非公開
+- Windows 版 Momo NVIDIA VIDEO CODEC SDK 対応
+    - [スロースネットワークス株式会社](http://www.sloth-networks.co.jp) 様
+- Linux 版 Momo NVIDIA VIDEO CODEC SDK 対応
+    - [株式会社オプティム](https://www.optim.co.jp/) 様
+
+## 優先実装が可能な機能一覧
+
+**詳細は Discord やメールなどでお気軽にお問い合わせください**
+
+- Jetson Xavier NX 対応
+    - MotionJPEG ハードウェアデコーダ対応
+    - H.264 / VP9 ハードウェアエンコーダ対応
+    - H.264 / VP9 ハードウェアデコーダ対応
+- AV1 対応
+    - [x] macOS
+    - [x] Ubuntu
+    - [ ] Windows
+- 統計機能
+    - [x] Sora のシグナリング経由での出力
+    - Ayame のシグナリング 経由での出力
+- NVIDIA VIDEO CODEC SDK
+    - [x] H.264 ハードウェアエンコーダ対応
+        - [x] Ubuntu 18.04
+        - [x] Windows 10
+    - VP8 / VP9 / H.264 ハードウェアデコーダ対応
+        - Ubuntu 18.04
+        - Windows 10
+    - MotionJPEG ハードウェアデコーダ対応
+        - Ubuntu 18.04
+        - Windows 10
+- Intel Media SDK 対応
+    - VP8 / VP9 / H.264 ハードウェアエンコーダ対応
+- Simulcast 対応
+- Ubuntu 18.04 Raspberry Pi 対応
+    - H.264 の HWA 対応を含む
+- 録画対応
+    - MP4 形式での出力
+- ROS Melodic 対応
+- ROS2 対応
+
+## Momo についての電子書籍
+
+Momo の原作者である @tnoho が書いた Momo のノウハウが沢山詰まった本が販売されています。
+
+[WebRTCをブラウザ外で使ってブラウザでできることを増やしてみませんか?\(電子版\) \- でんでんらぼ \- BOOTH](https://tnoho.booth.pm/items/1572872)
+
 ## サポートについて
-
-WebRTC Native Client Momo に関するバグ報告は GitHub Issues へお願いします。それ以外については Discord へお願いします。
-
-### バグ報告
-
-https://github.com/shiguredo/momo/issues
-
-#### 理想的なバグ報告例
-
-- [ローカルネット上のAyameを使用して接続した場合にSEGVが発生する · Issue \#100 · shiguredo/momo](https://github.com/shiguredo/momo/issues/100)
 
 ### Discord
 
-ベストエフォートで運用しています。
+- アドバイスします
+- フィードバック歓迎します
+- サポートしません
+
+最新の状況などは Discord で共有しています。質問や相談も Discord でのみ受け付けています。
 
 https://discord.gg/gmEuZye
 
-### 有料サポートについて
+### バグ報告
 
-WebRTC Native Client に対する有料でのサポート契約については WebRTC SFU Sora ライセンス契約をしているお客様が前提となります。
+Discord へお願いします。
+
+### 有料でのテクニカルサポートについて
+
+WebRTC Native Client に対する有料でのテクニカルサポート契約については WebRTC SFU Sora ライセンス契約をしているお客様が前提となります。
+
+- Momo のテクニカルサポート
+- OSS 公開前提での Momo への機能追加
 
 ## H.264 のライセンス費用について
 
-H.264 ハードウェアエンコーダ **のみ** を利用している Momo 単体の配布においてはライセンス費用は不要ですが、ハードウェアとセットで配布する場合はライセンス費用を支払う必要があります。
+H.264 ハードウェアエンコーダ **のみ** を利用している Momo 単体の配布においてはライセンス費用は不要ですが、
+ハードウェアとセットで配布する場合はライセンス費用を支払う必要があります。
 
-ただし、 Raspberry Pi においては H.264 のライセンスがハードウェア費用に含まれているため、配布時にライセンス費用を支払う必要はありません。
+ただし、 Raspberry Pi においては H.264 のライセンスがハードウェア費用に含まれているため、
+配布時にライセンス費用を支払う必要はありません。
 
 詳細については [MPEG LA](https://www.mpegla.com/) まで問い合わせる事をおすすめします。
 
@@ -149,6 +239,7 @@ H.264 ハードウェアエンコーダ **のみ** を利用している Momo �
 
 ## 利用例など
 
+- [カメラ無しのラズパイとmomoでテスト映像をWebRTCで配信する \- Qiita](https://qiita.com/tetsu_koba/items/789a19cb575953f41a1a)
 - [libwebRTCでFakeVideoしてみた \- Qiita](https://qiita.com/aikw/items/efb3726eb808a913d9da)
 - [ティアフォーにおける自動運転車両の遠隔監視・操縦システムのご紹介 \- Tier IV Tech Blog](https://tech.tier4.jp/entry/2019/01/22/170032)
 - [Run WebRTC Native Client Momo on Raspberry Pi 3B \| SHIROKU\.NET](https://shiroku.net/robotics/run-webrtc-native-client-momo-on-raspberry-pi-3b/)
@@ -157,22 +248,3 @@ H.264 ハードウェアエンコーダ **のみ** を利用している Momo �
 - [ラズパイ\+momoでWebRTCで送信するときにマイクの代わりに音声ファイルを使用する \- Qiita](https://qiita.com/tetsu_koba/items/b887c1a0be9f26b795f2)
 - [ラズパイのmomoでステレオ音声でWebRTCで配信する \- Qiita](https://qiita.com/tetsu_koba/items/6c07129caa5a08d5d172)
 
-## Momo についての電子書籍
-
-Momo のコア開発者である @tnoho が書いた Momo のノウハウが沢山詰まった本が販売されています。
-
-[WebRTCをブラウザ外で使ってブラウザでできることを増やしてみませんか?\(電子版\) \- でんでんらぼ \- BOOTH](https://tnoho.booth.pm/items/1572872)
-
-## Windows 版について
-
-Windows 版 Momo をビルドするツールを販売しております。興味のある方は以下をご確認ください。
-
-[Windows 版 WebRTC Native Client Momo](https://gist.github.com/voluntas/7af1596557121796123ac7dee9e3f5a4)
-
-## カスタマイズなど
-
-OSS にて公開可能でさらに弊社が Momo に組み込んでも良いと思える機能開発であれば、お仕事としてお受けすることが可能です。
-
-非公開のカスタマイズは時雨堂がお仕事としてお受けする事はできません。ただし Momo の開発を仕事として受けることが可能な開発者を紹介することが可能です。
-
-まずは momo at shiguredo.jp までお問い合わせください。

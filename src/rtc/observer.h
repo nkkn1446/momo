@@ -2,23 +2,23 @@
 #define PEERCONNECTIONOBSERVER_H_
 
 #include "api/peer_connection_interface.h"
-
+#include "data_manager.h"
 #include "messagesender.h"
 #include "video_track_receiver.h"
 
 class PeerConnectionObserver : public webrtc::PeerConnectionObserver {
  public:
   PeerConnectionObserver(RTCMessageSender* sender,
-                         VideoTrackReceiver *receiver)
-                         : _sender(sender),
-                           _receiver(receiver) {};
+                         VideoTrackReceiver* receiver,
+                         RTCDataManager* data_manager)
+      : _sender(sender), _receiver(receiver), _data_manager(data_manager){};
   ~PeerConnectionObserver();
 
  protected:
   void OnSignalingChange(
       webrtc::PeerConnectionInterface::SignalingState new_state) override {}
   void OnDataChannel(
-      rtc::scoped_refptr<webrtc::DataChannelInterface> data_channel) override {}
+      rtc::scoped_refptr<webrtc::DataChannelInterface> data_channel) override;
   void OnRenegotiationNeeded() override {}
   void OnStandardizedIceConnectionChange(
       webrtc::PeerConnectionInterface::IceConnectionState new_state) override;
@@ -34,7 +34,8 @@ class PeerConnectionObserver : public webrtc::PeerConnectionObserver {
   void ClearAllRegisteredTracks();
 
   RTCMessageSender* _sender;
-  VideoTrackReceiver *_receiver;
+  VideoTrackReceiver* _receiver;
+  RTCDataManager* _data_manager;
   std::vector<webrtc::VideoTrackInterface*> _video_tracks;
 };
 

@@ -11,12 +11,243 @@
 
 ## develop
 
+## 2020.6
+
+- [UPDATE] `libwebrtc` を `M84.4127@{#0}` に上げる
+    - @voluntas
+- [ADD] test モードの Momo と Ayame モードの Momo の相互接続を可能とする
+    - @tnoho
+- [CHANGE] ubuntu-16.04_armv7_ros ビルドを削除
+    - @melpon
+
+## 2020.5.2
+
+- [FIX] AV1 が利用できなかったのを修正する
+    - @torikizi @voluntas
+- [UPDATE] `libwebrtc` を `M84.4104@{#0}` に上げる
+    - @voluntas
+
+## 2020.5.1
+
+- [FIX] CMakeLists.txt のタイポを修正する
+    - @azamiya @torikizi @tnoho @melpon
+
+## 2020.5
+
+リリース日: 2020.04.14
+
+- [UPDATE] `libwebrtc` を `M83.4103@{#2}` に上げる
+    - @voluntas
+- [UPDATE] `libwebrtc` を `M81.4044@{#13}` に上げる
+    - @voluntas
+- [UPDATE] `cmake` を `3.17.1` に上げる
+    - @voluntas
+- [ADD] 実験的に AV1 に対応する
+    - Sora モードでのみ利用可能
+    - @voluntas @tnoho
+- [FIX] Jetson Nano では ALSA ではなく PulseAudio を利用する
+    - Jetson Nano でつながらない問題が発生するのを修正
+    - @azamiya @torikizi @tnoho @melpon
+
+## 2020.4
+
+リリース日: 2020.04.01
+
+- [UPDATE] `libwebrtc` を `M81.4044@{#11}` に上げる
+    - @voluntas
+- [UPDATE] `sdl2` を `2.0.12` に上げる
+    - @voluntas
+- [UPDATE] `cmake` を `3.17.0` に上げる
+    - @voluntas
+- [ADD] Windows でも `--video-device` を指定できるようにする
+    - @msnoigrs
+- [ADD] sora モードの引数に `--audio` と `--video` を追加
+    - @melpon
+- [CHANGE] ルートでの `--port` 引数を削除し、`sora` モードと `test` モードで `--port` を指定する
+    - @melpon
+- [CHANGE] `sora` モードで `--port` を指定していない場合、`--auto` を指定しなくても自動的に接続する
+    - @melpon
+- [CHANGE] `--daemon` 引数を削除
+    - @melpon
+- [CHANGE] `--no-video` と `--no-audio` 引数を `--no-video-device` と `--no-audio-device` に変更
+    - @melpon
+- [CHANGE] PCMU オーディオコーデックを削除
+    - @melpon
+- [CHANGE] sora モードの `--video-codec` や `--audio-codec` を指定しなかった場合、Sora 側のデフォルト値を使うようにする
+    - 今までは VP8, OPUS だった
+    - @melpon
+- [FIX] video_adapter_メンバ変数は使用していないので削除する
+    - @msnoigrs
+- [FIX] Ubuntu 18.04 で `libcuda.so` / `libnvcuvid.so` がイントールされていなくても起動するようにする
+    - @melpon
+
+## 2020.3.1
+
+- [FIX] ubuntu-18.04_x86_64 で H.264 を有効にする
+    - @melpon
+
+## 2020.3
+
+- [UPDATE] Raspberry Pi の H.264 を利用時のリサイズ処理をハードウェアに変更する
+    - VPU でソフトウェア処理される `vc.ril.resize` からハードウェア処理される `vc.ril.isp` への変更
+    - YUV の形式が異なる場合の変換処理もハードウェアに変更
+    - @tnoho
+- [UPDATE] libwebrtc を M81.4044@{#9} に上げる
+    - @voluntas
+- [UPDATE] libwebrtc を M81.4044@{#7} に上げる
+    - @voluntas
+- [UPDATE] libwebrtc を M80.3987@{#6} に上げる
+    - @voluntas
+- [ADD] Windows 10 で NVIDIA VIDEO CODEC SDK を利用した H.264 ハードウェアエンコーダへ対応
+    - @melpon
+- [ADD] Ubuntu 18.04 で NVIDIA VIDEO CODEC SDK を利用した H.264 ハードウェアエンコーダへ対応
+    - @melpon
+- [ADD] TLS チェックを行わない --insecure オプションを追加
+    - @melpon
+- [ADD] WSS と TURN-TLS 時の証明書チェックを libwebrtc ハードコードとデフォルトパス両方を利用するようにする
+    - @melpon
+- [ADD] WebRTC カスタム用のスクリプトを追加
+    - @melpon
+- [ADD] Sora モード利用時の `type: pong` で stats 取得して送るようにする
+    - @melpon
+- [ADD] Raspberry Pi で SDL 利用時に H264 ハードウェアデコーダを利用するようにする
+    - @tnoho
+- [FIX] Jetson Nano で --use-native を使った際に FHD 設定で下部に緑の帯が出るのを修正
+    - https://github.com/shiguredo/momo/issues/124
+    - @tetsu-koba  @tnoho
+- [FIX] Jetson Nano で H264 デコーダを止める際にハングしてしまう問題を修正
+    - @soudegesu @tnoho
+- [FIX] macOS で WebRTC のバージョンが埋め込まれていなかった問題を修正
+    - @melpon
+- [FIX] Jetson Nano で RTP タイムスタンプが 90kHz になっていなかったのを修正
+    - https://github.com/shiguredo/momo/pull/137
+    - @tetsu-koba @tnoho
+
+## 2020.2.1
+
+**hotfix**
+
+- [FIX] macOS で --use-sdl オプションを利用すると落ちていたのを修正する
+    - https://bugzilla.libsdl.org/show_bug.cgi?id=4617
+    - @melpon
+
+## 2020.2
+
+- [UPDATE] CLI11 を v1.9.0 にアップデートする
+    - @voluntas
+- [ADD] Windows 10 対応を追加
+    - @melpon
+- [ADD] Windows の Sora/Ayame モード利用時のシグナリング接続情報に environment / libwebrtc / sora_client を追加
+    - `"environment": "[x64] Windows 10.0 Build 18362"`
+    - `"libwebrtc": "Shiguredo-Build M80.3987@{#2} (80.3987.2.1 fba51dc6)"`
+    - `"sora_client": "WebRTC Native Client Momo 2020.1 (0ff24ff3)"`
+    - @melpon
+- [ADD] ビルド環境を CMake 化
+    - @melpon
+- [CHANGE] ubuntu-18.04_armv8 のビルドを削除
+    - @melpon
+
+## 2020.1
+
+- [UPDATE] libwebrtc を M80.3987@{#2} に上げる
+    - libwebrtc のハッシュは fba51dc69b97f6f170d9c325a38e05ddd69c8b28
+    - @melpon
+- [UPDATE] Momo 2020.1 にバージョンを上げる
+    - バージョン番号を <リリース年>.<その年のリリース回数> に変更
+    - @voluntas
+- [UPDATE] Boost 1.72.0 にアップデートする
+    - @voluntas
+- [UPDATE] --video-device を Linux 全般で有効にする
+    - V4L2 capturer を使うようにした
+    - @shino
+- [UPDATE] Jetson Nano 用のライブラリを NVIDIA L4T 32.3.1 に上げる
+    - [L4T \| NVIDIA Developer](https://developer.nvidia.com/embedded/linux-tegra)
+    - @melpon
+- [UPDATE] 音声系オプションの --disable-residual-echo-detector を追加する
+    - @melpon
+- [ADD] データチャネルを利用したシリアルポートへの読み書き機能を追加する
+    - --serial を指定することでデータチャネル経由でのシリアル読み書きが可能になる
+    - test と ayame モードでのみ利用可能
+    - @tnoho
+- [ADD] 自由に解像度の値を指定できるようにする
+    - `--resolution 640x480` のように指定できるようになりました
+    - この機能が有効になるのは、カメラに依存するため動作保証はありません
+    - @melpon
+- [ADD] Sora モード利用時のシグナリング接続情報に enviroment / libwebrtc / sora_client を追加する
+    - Jetson Nano の場合
+        - `"environment": "[aarch64] Ubuntu 18.04.3 LTS (nvidia-l4t-core 32.2.1-20190812212815)"`
+        - `"libwebrtc": "Shiguredo-Build M80.3987@{#2} (80.3987.2.1 15b26e4)"`
+        - `"sora_client": "WebRTC Native Client Momo 2020.1 (f6b69e77)"`
+    - macOS の場合
+        - `"environment": "[x86_64] macOS Version 10.15.2 (Build 19C57)"`
+        - `"libwebrtc": "Shiguredo-Build M80.3987@{#2} (80.3987.2.1 15b26e4)"`
+        - `"sora_client": "WebRTC Native Client Momo 2020.1 (f6b69e77)"`
+    - Ubuntu 18.04 x86_64 の場合
+        - `"environment": "[x86_64] Ubuntu 18.04.3 LTS"`
+        - `"libwebrtc": "Shiguredo-Build M80.3987@{#2} (80.3987.2.1 15b26e4)"`
+        - `"sora_client": "WebRTC Native Client Momo 2020.1 (f6b69e77)"`
+    - @melpon
+- [ADD] Ayame モード利用時のシグナリング接続情報に enviroment / libwebrtc / ayameClient を追加する
+    - Sora 時の sora_client が ayameClient に変わります
+    - @melpon
+- [ADD] Raspbian ミラーを追加する
+    - @melpon
+- [CHANGE] momo --help の英語化
+    - @shino @msnoigrs
+- [CHANGE] <package>.edit の機能とドキュメントを削除
+    - @melpon
+- [CHANGE] armv6 で SDL を使えなくする
+    - @melpon
+- [FIX] --no-video を指定しているにもかかわらずカメラを一瞬だけ掴むのを修正する
+    - @melpon @mganeko
+- [FIX] SDL が有効でない時に SDL 関連のオプションを指定するとエラーにする
+    - @melpon
+- [FIX] macOS のビルドで Python 2.7 必須を外す
+    - @melpon
+- [FIX] Ayame モードで WebSocket が閉じられた際に再接続処理に進まない箇所を修正
+    - @Hexa
+- [FIX] Ayame モードで シグナリングで bye を受信した際処理として、各 close 処理を追加する
+    - @Hexa
+- [FIX] Ayame モードで 再接続処理の 1 回目を、5 秒後からすぐに実行されるように変更する
+    - @Hexa
+
+## 19.12.1
+
+- [UPDATE] libwebrtc を時前ビルドしないようにする
+    - https://github.com/shiguredo-webrtc-build/webrtc-build を利用する
+    - @melpon
+- [FIX] momo + ayame モードで再接続時に delay してしまう問題を解決
+    - @kdxu
+
+## 19.12.0
+
+- [UPDATE] libwebrtc M79 コミットポジションを 5 にする
+    - libwebrtc のハッシュは b484ec0082948ae086c2ba4142b4d2bf8bc4dd4b
+    - @voluntas
+- [UPDATE] json を 3.7.3 に上げる
+    - @voluntas
+- [ADD] sora モード利用時の --role に sendrecv | sendonly | recvonly を指定できるようにする
+    - @melpon
+- [FIX] QVGA の指定を 320x240 にする
+    - @melpon @Bugfire
+- [FIX] ayame モードで再接続時に segmentation fault が起こる場合があるのを修正する
+   - ただし、互いに接続を確立するまでping-pongを送らない/ping timeoutで再接続するまで数秒かかることがある」ので、再接続によって受信側が数秒待つ必要が出てくる可能性がある
+   - 上記の問題はこの修正では未解決
+   - @kdxu
+- [FIX] OpenH264 を明示的にビルドしないようにする
+    - @melpon
+
+## 19.11.1
+
+- [ADD] Raspberry Pi 4 での動作を確認
+    - @voluntas @Hexa
 - [UPDATE] libwebrtc M79 コミットポジションを 3 にする
     - libwebrtc のハッシュは 2958d0d691526c60f755eaa364abcdbcda6adc39
     - @voluntas
 - [UPDATE] libwebrtc M79 コミットポジションを 2 にする
     - libwebrtc のハッシュは 8e36cc906e5e1c16486e60e62acbf79c1c691879
     - @voluntas
+- [UPDATE] Ayame で isExistUser フラグが accept 時に返却されなかった場合 2 回 peer connection を生成する
 - [ADD] SDL を利用した音声と映像の受信可能にする `--use-sdl` を追加する
     - [Simple DirectMedia Layer](https://www.libsdl.org/)
     - @tnoho
@@ -33,8 +264,14 @@
 - [ADD] SDL 利用時に映像を表示するウインドウをフルスクリーンにする `--fullscreen` を追加する
     - f を押すと全画面、もう一度 f を押すと戻る
     - @tnoho
+- [ADD] sora 利用時に `--role upstream` または `--role downstream` を指定できるようにする
+    - @melpon
+- [CHANGE] ayame の `accept` 時に返却される `isExistUser` フラグによって offer を送るかどうかを決めるよう変更する
+    - @kdxu
 - [FIX] C++14 にする
     - @melpon
+- [FIX] USE_H264が定義されない場合でも--video-codecが使えるように修正する
+    - @msnoigrs
 
 ## 19.11.0
 

@@ -10,7 +10,7 @@
 #ifndef CUSTOM_WINDOW_TRACK_SOURCE_H_
 #define CUSTOM_WINDOW_TRACK_SOURCE_H_
 
-#include "media/base/adapted_video_track_source.h"
+#include "scalable_track_source.h"
 #include "api/video/video_sink_interface.h"
 #include "modules/video_capture/video_capture_impl.h"
 #include "rtc_base/ref_counted_object.h"
@@ -21,7 +21,7 @@
 
 #include "connection_settings.h"
 
-class WindowCapturerTrackSource : public rtc::AdaptedVideoTrackSource,
+class WindowCapturerTrackSource : public ScalableVideoTrackSource,
                             public rtc::VideoSinkInterface<webrtc::VideoFrame> {
  private:
   typedef rtc::AdaptedVideoTrackSource super;
@@ -52,7 +52,6 @@ class WindowCapturerTrackSource : public rtc::AdaptedVideoTrackSource,
   absl::optional<bool> needs_denoising() const override;
   webrtc::MediaSourceInterface::SourceState state() const override;
   bool remote() const override;
-  virtual bool useNativeBuffer() { return false; }
 
  private:
   rtc::TimestampAligner timestamp_aligner_;

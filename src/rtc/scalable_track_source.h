@@ -30,6 +30,8 @@ class ScalableVideoTrackSource : public rtc::AdaptedVideoTrackSource {
   webrtc::MediaSourceInterface::SourceState state() const override;
   bool remote() const override;
   void OnCapturedFrame(const webrtc::VideoFrame& frame);
+
+ protected:
   virtual bool useNativeBuffer() { return false; }
 
  private:
@@ -37,8 +39,6 @@ class ScalableVideoTrackSource : public rtc::AdaptedVideoTrackSource {
   //                     const rtc::VideoSinkWants& wants) override;
 
   rtc::TimestampAligner timestamp_aligner_;
-
-  cricket::VideoAdapter video_adapter_;
 };
 
 #endif  // VIDEO_CAPTURER_H_

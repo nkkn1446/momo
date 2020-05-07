@@ -1,8 +1,32 @@
+#include "connection.h"
+
 #include "rtc_base/logging.h"
 
-#include "pc/peer_connection.h"
-#include "api/peer_connection_proxy.h"
-#include "connection.h"
+// stats のコールバックを受け取るためのクラス
+class RTCStatsCallback : public webrtc::RTCStatsCollectorCallback {
+ public:
+  typedef std::function<void(
+      const rtc::scoped_refptr<const webrtc::RTCStatsReport>& report)>
+      ResultCallback;
+
+  static RTCStatsCallback* Create(ResultCallback result_callback) {
+    return new rtc::RefCountedObject<RTCStatsCallback>(
+        std::move(result_callback));
+  }
+
+  void OnStatsDelivered(
+      const rtc::scoped_refptr<const webrtc::RTCStatsReport>& report) override {
+    std::move(result_callback_)(report);
+  }
+
+ protected:
+  RTCStatsCallback(ResultCallback result_callback)
+      : result_callback_(std::move(result_callback)) {}
+  ~RTCStatsCallback() override = default;
+
+ private:
+  ResultCallback result_callback_;
+};
 
 RTCConnection::~RTCConnection() {
   _connection->Close();
@@ -35,14 +59,6 @@ void RTCConnection::setOffer(const std::string sdp) {
       SetSessionDescriptionObserver::Create(session_description->GetType(),
                                             _sender),
       session_description.release());
-
-  RTC_LOG(LS_INFO) << __FUNCTION__;
-  auto* conn = static_cast<webrtc::PeerConnection*>(static_cast<webrtc::PeerConnectionProxy*>(_connection.get())->internal());
-  auto transceivers = conn->GetTransceiversInternal();
-  RTC_LOG(LS_INFO) << transceivers.size();
-  auto channel = transceivers[0]->internal()->channel();
-  auto media_channel = channel->media_channel();
-  RTC_LOG(LS_INFO) << (media_channel ? 1 : 0);
 }
 
 void RTCConnection::createAnswer() {
@@ -159,4 +175,10 @@ bool RTCConnection::isMediaEnabled(
     return track->enabled();
   }
   return false;
+}
+
+void RTCConnection::getStats(
+    std::function<void(const rtc::scoped_refptr<const webrtc::RTCStatsReport>&)>
+        callback) {
+  _connection->GetStats(RTCStatsCallback::Create(std::move(callback)));
 }

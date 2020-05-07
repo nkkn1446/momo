@@ -1,7 +1,6 @@
 #ifndef CONNECTION_H_
 #define CONNECTION_H_
 #include "api/peer_connection_interface.h"
-
 #include "observer.h"
 
 class RTCConnection {
@@ -24,6 +23,10 @@ class RTCConnection {
   bool setVideoEnabled(bool enabled);
   bool isAudioEnabled();
   bool isVideoEnabled();
+
+  void getStats(
+      std::function<void(
+          const rtc::scoped_refptr<const webrtc::RTCStatsReport>&)> callback);
 
  private:
   rtc::scoped_refptr<webrtc::MediaStreamInterface> getLocalStream();

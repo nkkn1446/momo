@@ -4,6 +4,7 @@
 #include <boost/beast/core/string.hpp>
 #include <boost/beast/http/message.hpp>
 #include <boost/beast/http/string_body.hpp>
+
 #include "api/peer_connection_interface.h"
 #include "connection_settings.h"
 
@@ -11,7 +12,6 @@ class Util {
  public:
   static void parseArgs(int argc,
                         char* argv[],
-                        bool& is_daemon,
                         bool& use_test,
                         bool& use_ayame,
                         bool& use_sora,

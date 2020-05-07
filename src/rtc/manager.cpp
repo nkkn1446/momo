@@ -1,9 +1,8 @@
 
-#include <iostream>
-#include <typeinfo>
+#include "manager.h"
 
-#include "pc/peer_connection.h"
-#include "api/peer_connection_proxy.h"
+#include <iostream>
+
 #include "absl/memory/memory.h"
 #include "api/audio_codecs/builtin_audio_decoder_factory.h"
 #include "api/audio_codecs/builtin_audio_encoder_factory.h"
@@ -16,11 +15,10 @@
 #include "modules/audio_processing/include/audio_processing.h"
 #include "modules/video_capture/video_capture.h"
 #include "modules/video_capture/video_capture_factory.h"
-#include "rtc_base/logging.h"
-#include "rtc_base/ssl_adapter.h"
-
-#include "manager.h"
 #include "observer.h"
+#include "rtc_base/logging.h"
+#include "rtc_base/openssl_certificate.h"
+#include "rtc_base/ssl_adapter.h"
 #include "scalable_track_source.h"
 #include "util.h"
 
@@ -35,54 +33,24 @@
 #include "ros/ros_audio_device_module.h"
 #endif
 
-#if USE_MMAL_ENCODER || USE_JETSON_ENCODER
+#if USE_MMAL_ENCODER || USE_JETSON_ENCODER || USE_NVCODEC_ENCODER
 #include "api/video_codecs/video_encoder_factory.h"
 #include "hw_video_encoder_factory.h"
 #endif
-#if USE_JETSON_ENCODER
+#if USE_MMAL_ENCODER || USE_JETSON_ENCODER
 #include "api/video_codecs/video_decoder_factory.h"
 #include "hw_video_decoder_factory.h"
 #endif
 
-class CustomSender : public webrtc::VideoRtpSender {
-public:
-	static rtc::scoped_refptr<CustomSender> Create(const webrtc::VideoRtpSender& sender) {
-		return rtc::scoped_refptr<CustomSender>(
-				new rtc::RefCountedObject<CustomSender>(sender));
-	}
-
-	cricket::MediaChannel* getMediaChannel() {return media_channel_;}
-	void SetSsrc(uint32_t ssrc) override {
-		RTC_LOG(LS_INFO) << "FUGA";
-		RTC_LOG(LS_INFO) << (getMediaChannel() ? 1 : 0);
-		RTC_LOG(LS_INFO) << ssrc;
-		webrtc::VideoRtpSender::SetSsrc(ssrc);
-	}
-	//bool SetTrack(webrtc::MediaStreamTrackInterface* track) override {
-	//	RTC_LOG(LS_INFO) << "FUGA";
-	//	RTC_LOG(LS_INFO) << (getMediaChannel() ? 1 : 0);
-	//	return webrtc::VideoRtpSender::SetTrack(track);
-	//}
-	void SetMediaChannel(cricket::MediaChannel* media_channel) override {
-		RTC_LOG(LS_INFO) << "FUGA";
-		return webrtc::VideoRtpSender::SetMediaChannel(media_channel);
-	}
-
-protected:
-	void SetSend() override {
-		RTC_LOG(LS_INFO) << "FUGA";
-		webrtc::VideoRtpSender::SetSend();
-	}
-
-	CustomSender(const webrtc::VideoRtpSender& sender) : webrtc::VideoRtpSender(sender) {}
-};
+#include "ssl_verifier.h"
 
 RTCManager::RTCManager(
     ConnectionSettings conn_settings,
-    rtc::scoped_refptr<rtc::AdaptedVideoTrackSource> video_track_source,
+    rtc::scoped_refptr<ScalableVideoTrackSource> video_track_source,
     VideoTrackReceiver* receiver)
     : _conn_settings(conn_settings),
-      _receiver(receiver) {
+      _receiver(receiver),
+      _data_manager(nullptr) {
   rtc::InitializeSSL();
 
   _networkThread = rtc::Thread::CreateWithSocketServer();
@@ -92,14 +60,21 @@ RTCManager::RTCManager(
   _signalingThread = rtc::Thread::Create();
   _signalingThread->Start();
 
-#if __linux__
+#if defined(__linux__)
+
+#if USE_LINUX_PULSE_AUDIO
+  webrtc::AudioDeviceModule::AudioLayer audio_layer =
+      webrtc::AudioDeviceModule::kLinuxPulseAudio;
+#else
   webrtc::AudioDeviceModule::AudioLayer audio_layer =
       webrtc::AudioDeviceModule::kLinuxAlsaAudio;
+#endif
+
 #else
   webrtc::AudioDeviceModule::AudioLayer audio_layer =
       webrtc::AudioDeviceModule::kPlatformDefaultAudio;
 #endif
-  if (_conn_settings.no_audio) {
+  if (_conn_settings.no_audio_device) {
     audio_layer = webrtc::AudioDeviceModule::kDummyAudio;
   }
 
@@ -131,7 +106,7 @@ RTCManager::RTCManager(
   media_dependencies.video_encoder_factory = CreateObjCEncoderFactory();
   media_dependencies.video_decoder_factory = CreateObjCDecoderFactory();
 #else
-#if USE_MMAL_ENCODER || USE_JETSON_ENCODER
+#if USE_MMAL_ENCODER || USE_JETSON_ENCODER || USE_NVCODEC_ENCODER
   media_dependencies.video_encoder_factory =
       std::unique_ptr<webrtc::VideoEncoderFactory>(
           absl::make_unique<HWVideoEncoderFactory>());
@@ -139,7 +114,7 @@ RTCManager::RTCManager(
   media_dependencies.video_encoder_factory =
       webrtc::CreateBuiltinVideoEncoderFactory();
 #endif
-#if USE_JETSON_ENCODER
+#if USE_MMAL_ENCODER || USE_JETSON_ENCODER
   media_dependencies.video_decoder_factory =
       std::unique_ptr<webrtc::VideoDecoderFactory>(
           absl::make_unique<HWVideoDecoderFactory>());
@@ -169,7 +144,7 @@ RTCManager::RTCManager(
   factory_options.ssl_max_version = rtc::SSL_PROTOCOL_DTLS_12;
   _factory->SetOptions(factory_options);
 
-  if (!_conn_settings.no_audio) {
+  if (!_conn_settings.no_audio_device) {
     cricket::AudioOptions ao;
     if (_conn_settings.disable_echo_cancellation)
       ao.echo_cancellation = false;
@@ -181,6 +156,8 @@ RTCManager::RTCManager(
       ao.highpass_filter = false;
     if (_conn_settings.disable_typing_detection)
       ao.typing_detection = false;
+    if (_conn_settings.disable_residual_echo_detector)
+      ao.residual_echo_detector = false;
     RTC_LOG(LS_INFO) << __FUNCTION__ << ": " << ao.ToString();
     _audio_track = _factory->CreateAudioTrack(Util::generateRandomChars(),
                                               _factory->CreateAudioSource(ao));
@@ -189,7 +166,7 @@ RTCManager::RTCManager(
     }
   }
 
-  if (video_track_source && !_conn_settings.no_video) {
+  if (video_track_source && !_conn_settings.no_video_device) {
     rtc::scoped_refptr<webrtc::VideoTrackSourceInterface> video_source =
         webrtc::VideoTrackSourceProxy::Create(
             _signalingThread.get(), _workerThread.get(), video_track_source);
@@ -220,16 +197,43 @@ RTCManager::~RTCManager() {
   rtc::CleanupSSL();
 }
 
+void RTCManager::SetDataManager(RTCDataManager* data_manager) {
+  _data_manager = data_manager;
+}
+
+class RTCSSLVerifier : public rtc::SSLCertificateVerifier {
+  bool insecure_;
+
+ public:
+  RTCSSLVerifier(bool insecure) : insecure_(insecure) {}
+  bool Verify(const rtc::SSLCertificate& certificate) override {
+    // insecure の場合は証明書をチェックしない
+    if (insecure_) {
+      return true;
+    }
+    return SSLVerifier::VerifyX509(
+        static_cast<const rtc::OpenSSLCertificate&>(certificate).x509());
+  }
+};
+
 std::shared_ptr<RTCConnection> RTCManager::createConnection(
     webrtc::PeerConnectionInterface::RTCConfiguration rtc_config,
     RTCMessageSender* sender) {
   rtc_config.enable_dtls_srtp = true;
   rtc_config.sdp_semantics = webrtc::SdpSemantics::kUnifiedPlan;
   std::unique_ptr<PeerConnectionObserver> observer(
-      new PeerConnectionObserver(sender, _receiver));
+      new PeerConnectionObserver(sender, _receiver, _data_manager));
+  webrtc::PeerConnectionDependencies dependencies(observer.get());
+
+  // WebRTC の SSL 接続の検証は自前のルート証明書(rtc_base/ssl_roots.h)でやっていて、
+  // その中に Let's Encrypt の証明書が無いため、接続先によっては接続できないことがある。
+  //
+  // それを解消するために tls_cert_verifier を設定して自前で検証を行う。
+  dependencies.tls_cert_verifier = std::unique_ptr<rtc::SSLCertificateVerifier>(
+      new RTCSSLVerifier(_conn_settings.insecure));
+
   rtc::scoped_refptr<webrtc::PeerConnectionInterface> connection =
-      _factory->CreatePeerConnection(rtc_config, nullptr, nullptr,
-                                     observer.get());
+      _factory->CreatePeerConnection(rtc_config, std::move(dependencies));
   if (!connection) {
     RTC_LOG(LS_ERROR) << __FUNCTION__ << ": CreatePeerConnection failed";
     return nullptr;
@@ -251,27 +255,9 @@ std::shared_ptr<RTCConnection> RTCManager::createConnection(
     if (video_add_result.ok()) {
       rtc::scoped_refptr<webrtc::RtpSenderInterface> video_sender =
           video_add_result.value();
-      RTC_LOG(LS_INFO) << __FUNCTION__;
-      //free(video_sender->track().get());
-      char hoge[256] = "\0";
-      sprintf(hoge, "%p", static_cast<webrtc::VideoTrackInterface*>(video_sender->track().get()));
-      RTC_LOG(LS_INFO) << hoge;
-      char fuga[256] = "\0";
-      sprintf(fuga, "%p", static_cast<webrtc::VideoTrackInterface*>(_video_track.get()));
-      RTC_LOG(LS_INFO) << fuga;
-
-      rtc::scoped_refptr<webrtc::RtpSenderProxyWithInternal<webrtc::RtpSenderInternal>> ptr = static_cast<webrtc::RtpSenderProxyWithInternal<webrtc::RtpSenderInternal>*>(video_sender.get());
-      auto proxy = ptr.get();
-      webrtc::RtpSenderInternal* internal = proxy->internal();
-      auto videosender = static_cast<webrtc::VideoRtpSender*>(internal);
-      auto customsender = CustomSender::Create(*videosender);
-      //free(videosender);
-      //memcpy((void*)(videosender), (void*)customsender.get(), sizeof(CustomSender));
-
       webrtc::RtpParameters parameters = video_sender->GetParameters();
       parameters.degradation_preference = _conn_settings.getPriority();
       video_sender->SetParameters(parameters);
-
     } else {
       RTC_LOG(LS_WARNING) << __FUNCTION__ << ": Cannot add _video_track";
     }

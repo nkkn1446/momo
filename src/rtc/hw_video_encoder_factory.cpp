@@ -10,12 +10,21 @@
 #include "modules/video_coding/codecs/vp9/include/vp9.h"
 #include "rtc_base/logging.h"
 
+#if !defined(__arm__) || defined(__aarch64__) || defined(__ARM_NEON__)
+#include "modules/video_coding/codecs/av1/libaom_av1_encoder.h"
+#endif
+
 #if USE_MMAL_ENCODER
 #include "hwenc_mmal/mmal_h264_encoder.h"
 #endif
 #if USE_JETSON_ENCODER
 #include "hwenc_jetson/jetson_h264_encoder.h"
 #endif
+#if USE_NVCODEC_ENCODER
+#include "hwenc_nvcodec/nvcodec_h264_encoder.h"
+#endif
+
+#include "h264_format.h"
 
 std::vector<webrtc::SdpVideoFormat> HWVideoEncoderFactory::GetSupportedFormats()
     const {
@@ -23,8 +32,23 @@ std::vector<webrtc::SdpVideoFormat> HWVideoEncoderFactory::GetSupportedFormats()
   supported_codecs.push_back(webrtc::SdpVideoFormat(cricket::kVp8CodecName));
   for (const webrtc::SdpVideoFormat& format : webrtc::SupportedVP9Codecs())
     supported_codecs.push_back(format);
-  for (const webrtc::SdpVideoFormat& format : webrtc::SupportedH264Codecs())
+
+  std::vector<webrtc::SdpVideoFormat> h264_codecs = {
+      CreateH264Format(webrtc::H264::kProfileBaseline, webrtc::H264::kLevel3_1,
+                       "1"),
+      CreateH264Format(webrtc::H264::kProfileBaseline, webrtc::H264::kLevel3_1,
+                       "0"),
+      CreateH264Format(webrtc::H264::kProfileConstrainedBaseline,
+                       webrtc::H264::kLevel3_1, "1"),
+      CreateH264Format(webrtc::H264::kProfileConstrainedBaseline,
+                       webrtc::H264::kLevel3_1, "0")};
+
+  for (const webrtc::SdpVideoFormat& format : h264_codecs)
     supported_codecs.push_back(format);
+
+#if !defined(__arm__) || defined(__aarch64__) || defined(__ARM_NEON__)
+  supported_codecs.push_back(webrtc::SdpVideoFormat(cricket::kAv1CodecName));
+#endif
 
   return supported_codecs;
 }
@@ -57,7 +81,21 @@ std::unique_ptr<webrtc::VideoEncoder> HWVideoEncoderFactory::CreateVideoEncoder(
     return std::unique_ptr<webrtc::VideoEncoder>(
         absl::make_unique<JetsonH264Encoder>(cricket::VideoCodec(format)));
 #endif
+#if USE_NVCODEC_ENCODER
+    if (NvCodecH264Encoder::IsSupported()) {
+      return std::unique_ptr<webrtc::VideoEncoder>(
+          absl::make_unique<NvCodecH264Encoder>(cricket::VideoCodec(format)));
+    } else {
+      RTC_LOG(LS_WARNING) << "NVIDIA VIDEO CODEC SDK is not supported";
+      return nullptr;
+    }
+#endif
   }
+
+#if !defined(__arm__) || defined(__aarch64__) || defined(__ARM_NEON__)
+  if (absl::EqualsIgnoreCase(format.name, cricket::kAv1CodecName))
+    return webrtc::CreateLibaomAv1Encoder();
+#endif
 
   RTC_LOG(LS_ERROR) << "Trying to created encoder of unsupported format "
                     << format.name;

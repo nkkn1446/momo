@@ -31,6 +31,8 @@ SDL (Simple DirectMedia Layer) を利用することで、 Momo 自体が受信�
 
 - --multistream
     - Sora でマルチストリーム機能を利用する場合に指定します
+- --role upstream または --sora downstream
+    - Sora でロールを切り替える場合に指定します。デフォルトは upstream で、受信専用にする場合は downstream を指定します。
 - --spotlight
     - Sora でスポットライト機能を利用する場合に指定します
 
@@ -39,7 +41,7 @@ SDL (Simple DirectMedia Layer) を利用することで、 Momo 自体が受信�
 - ルーム ID を推測されにくい値に変更して下さい
 
 ```
-./momo --resolution VGA --no-audio --port 0 --use-sdl --show-me ayame wss://ayame-lite.shiguredo.jp/signaling momo-sdl-ayame
+./momo --resolution VGA --no-audio-device --use-sdl --show-me ayame wss://ayame-lite.shiguredo.jp/signaling momo-sdl-ayame
 ```
 
 [![Image from Gyazo](https://i.gyazo.com/8ca80e9b60c9e848e04afcefd86a2c07.png)](https://gyazo.com/8ca80e9b60c9e848e04afcefd86a2c07)
@@ -50,7 +52,7 @@ SDL (Simple DirectMedia Layer) を利用することで、 Momo 自体が受信�
 - Signaling サーバの URL はダミーです
 
 ```
-./momo --resolution VGA --no-audio --port 0 --use-sdl --show-me sora --auto --video-codec VP8 --video-bitrate 1000 wss://example.com/signaling momo-sdl-sora --multistream
+./momo --resolution VGA --no-audio-device --use-sdl --show-me sora --video-codec VP8 --video-bitrate 1000 --audio false wss://example.com/signaling momo-sdl-sora --multistream
 ```
 
 [![Image from Gyazo](https://i.gyazo.com/abdb1802bd66440ef32e75da6842f0cf.png)](https://gyazo.com/abdb1802bd66440ef32e75da6842f0cf)

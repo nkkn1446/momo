@@ -9,9 +9,12 @@
 
 using json = nlohmann::json;
 
-P2PWebsocketSession::P2PWebsocketSession(RTCManager* rtc_manager,
+P2PWebsocketSession::P2PWebsocketSession(boost::asio::io_context& ioc,
+                                         RTCManager* rtc_manager,
                                          ConnectionSettings conn_settings)
-    : rtc_manager_(rtc_manager), conn_settings_(conn_settings) {
+    : rtc_manager_(rtc_manager), conn_settings_(conn_settings),
+      watchdog_(ioc,
+                std::bind(&P2PWebsocketSession::onWatchdogExpired, this)) {
   RTC_LOG(LS_INFO) << __FUNCTION__;
 }
 
@@ -20,10 +23,11 @@ P2PWebsocketSession::~P2PWebsocketSession() {
 }
 
 std::shared_ptr<P2PWebsocketSession> P2PWebsocketSession::make_shared(
+    boost::asio::io_context& ioc,
     boost::asio::ip::tcp::socket socket,
     RTCManager* rtc_manager,
     ConnectionSettings conn_settings) {
-  auto p = std::make_shared<P2PWebsocketSession>(rtc_manager, conn_settings);
+  auto p = std::make_shared<P2PWebsocketSession>(ioc, rtc_manager, conn_settings);
   p->ws_ = std::unique_ptr<Websocket>(new Websocket(std::move(socket)));
   return p;
 }
@@ -32,6 +36,14 @@ void P2PWebsocketSession::run(
     boost::beast::http::request<boost::beast::http::string_body> req) {
   RTC_LOG(LS_INFO) << __FUNCTION__;
   doAccept(std::move(req));
+}
+
+void P2PWebsocketSession::onWatchdogExpired() {
+    json ping_message = {
+        {"type", "ping"},
+    };
+    ws_->sendText(std::move(ping_message.dump()));
+    watchdog_.reset();
 }
 
 void P2PWebsocketSession::doAccept(
@@ -82,7 +94,7 @@ void P2PWebsocketSession::onRead(boost::system::error_code ec,
 
   std::string type;
   try {
-    type = recv_message["type"];
+    type = recv_message["type"].get<std::string>();
   } catch (json::type_error& e) {
     return;
   }
@@ -90,7 +102,7 @@ void P2PWebsocketSession::onRead(boost::system::error_code ec,
   if (type == "offer") {
     std::string sdp;
     try {
-      sdp = recv_message["sdp"];
+      sdp = recv_message["sdp"].get<std::string>();
     } catch (json::type_error& e) {
       return;
     }
@@ -98,7 +110,7 @@ void P2PWebsocketSession::onRead(boost::system::error_code ec,
     auto send = std::bind([](P2PWebsocketSession* session,
                              std::string str) { session->ws_->sendText(str); },
                           this, std::placeholders::_1);
-    connection_ = std::make_shared<P2PConnection>(rtc_manager_, send);
+    connection_ = std::make_shared<P2PConnection>(rtc_manager_, conn_settings_, send);
     std::shared_ptr<RTCConnection> rtc_conn = connection_->getRTCConnection();
     rtc_conn->setOffer(sdp);
   } else if (type == "answer") {
@@ -108,7 +120,7 @@ void P2PWebsocketSession::onRead(boost::system::error_code ec,
     }
     std::string sdp;
     try {
-      sdp = recv_message["sdp"];
+      sdp = recv_message["sdp"].get<std::string>();
     } catch (json::type_error& e) {
       return;
     }
@@ -123,16 +135,23 @@ void P2PWebsocketSession::onRead(boost::system::error_code ec,
     std::string sdp_mid, candidate;
     try {
       json ice = recv_message["ice"];
-      sdp_mid = ice["sdpMid"];
-      sdp_mlineindex = ice["sdpMLineIndex"];
-      candidate = ice["candidate"];
+      sdp_mid = ice["sdpMid"].get<std::string>();
+      sdp_mlineindex = ice["sdpMLineIndex"].get<int>();
+      candidate = ice["candidate"].get<std::string>();
     } catch (json::type_error& e) {
       return;
     }
     std::shared_ptr<RTCConnection> rtc_conn = p2p_conn->getRTCConnection();
     rtc_conn->addIceCandidate(sdp_mid, sdp_mlineindex, candidate);
-  } else if (type == "close") {
+  } else if (type == "close" || type == "bye") {
     connection_ = nullptr;
+  } else if (type == "register") {
+    json accept_message = {
+        {"type", "accept"},
+        {"isExistUser", true},
+    };
+    ws_->sendText(std::move(accept_message.dump()));
+    watchdog_.enable(30);
   } else {
     return;
   }
