@@ -49,3 +49,5 @@ webrtc_logs_0
 /build/macos/_install
 
 /src/hwenc_jetson/Nv*
+
+nohup.out
