@@ -1,3 +1,3 @@
 #!/bin/bash
 
-DISPLAY=:0 nohup ./_build/ubuntu-18.04_x86_64/momo test --port 8081 --custom-window-title Android &
+DISPLAY=:0 nohup ./_build/ubuntu-18.04_x86_64/momo test --custom-window-title Android &
