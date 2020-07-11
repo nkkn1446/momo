@@ -18,15 +18,14 @@ set -ex
 
 . $WEBRTC_DIR/VERSIONS
 
-# tools の update.py を叩いて特定バージョンの clang バイナリを拾う
 mkdir -p $OUTPUT_DIR/llvm
+
+# aarch64 clang バイナリを拾う
 pushd $OUTPUT_DIR/llvm
-  rm -rf tools
-  git clone https://chromium.googlesource.com/chromium/src/tools
-  pushd tools
-    git reset --hard $WEBRTC_SRC_TOOLS_COMMIT
-    python clang/scripts/update.py --output-dir=$OUTPUT_DIR/llvm/clang
-  popd
+  wget https://releases.llvm.org/6.0.0/clang+llvm-6.0.0-aarch64-linux-gnu.tar.xz
+  tar xvf clang+llvm-6.0.0-aarch64-linux-gnu.tar.xz
+  mv clang+llvm-6.0.0-aarch64-linux-gnu clang
+  rm clang+llvm-6.0.0-aarch64-linux-gnu.tar.xz
 popd
 
 # 特定バージョンの libcxx を利用する
