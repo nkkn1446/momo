@@ -1,3 +1,4 @@
 #!/bin/bash
 
-DISPLAY=:10.0 nohup ./_build/ubuntu-18.04_ec2_c6g/momo test --custom-window-title Android &
+DISPLAY=:0 nohup ./_build/ubuntu-18.04_x86_64/momo test --custom-window-title Android &
+#DISPLAY=:10.0 nohup ./_build/ubuntu-18.04_ec2_c6g/momo test --custom-window-title Android &
