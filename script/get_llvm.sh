@@ -18,6 +18,15 @@ set -ex
 
 . $WEBRTC_DIR/VERSIONS
 
+## aarch64 clang バイナリを拾う
+#mkdir -p $OUTPUT_DIR/llvm
+#pushd $OUTPUT_DIR/llvm
+#  wget https://releases.llvm.org/6.0.0/clang+llvm-6.0.0-aarch64-linux-gnu.tar.xz
+#  tar xvf clang+llvm-6.0.0-aarch64-linux-gnu.tar.xz
+#  mv clang+llvm-6.0.0-aarch64-linux-gnu clang
+#  rm clang+llvm-6.0.0-aarch64-linux-gnu.tar.xz
+#popd
+
 # tools の update.py を叩いて特定バージョンの clang バイナリを拾う
 mkdir -p $OUTPUT_DIR/llvm
 pushd $OUTPUT_DIR/llvm
