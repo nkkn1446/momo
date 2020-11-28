@@ -2,13 +2,13 @@
 
 ## 準備
 
+### NVIDIA Jetson シリーズで Momo を準備する
+
+[SETUP_JETSON.md](SETUP_JETSON.md) をお読みください。
+
 ### Raspberry Pi で Momo を 準備する
 
 [SETUP_RASPBERRY_PI.md](SETUP_RASPBERRY_PI.md) をお読みください。
-
-### NVIDIA Jetson Nano で Momo を準備する
-
-[SETUP_JETSON_NANO.md](SETUP_JETSON_NANO.md) をお読みください。
 
 ### macOS で Momo を準備する
 
@@ -52,13 +52,9 @@ Momo では SDL (Simple DirectMedia Layer) を利用して音声や映像を出�
 
 [USE_SDL.md](USE_SDL.md) をお読みください。
 
-### ROS ノードとして Momo を使ってみる
+## FAQ
 
-- Momo を ROS ノードとして使ってみたい人は [USE_ROS.md](USE_ROS.md) をお読みください。
-
-## Q&A
-
-Q&A に関しては [QA.md](QA.md) をお読みください。
+FAQ に関しては [FAQ.md](FAQ.md) をお読みください。
 
 ## コマンド
 
@@ -66,7 +62,15 @@ Q&A に関しては [QA.md](QA.md) をお読みください。
 
 ```
 $ ./momo --version
-WebRTC Native Client Momo 2020.1 (4fc855c6) USE_MMAL_ENCODER=0
+WebRTC Native Client Momo 2020.8 (2505b05e)
+
+WebRTC: Shiguredo-Build M85.4183@{#1} (85.4183.1.1 d01b162f)
+Environment: [x86_64] macOS Version 10.15.6 (Build 19G73)
+
+USE_MMAL_ENCODER=0
+USE_JETSON_ENCODER=0
+USE_NVCODEC_ENCODER=0
+USE_SDL2=1
 ```
 
 ### ヘルプ
@@ -79,6 +83,7 @@ Usage: ./momo [OPTIONS] [SUBCOMMAND]
 Options:
   -h,--help                   Print this help message and exit
   --help-all                  Print help message for all modes and exit
+  --no-google-stun            Do not use google stun
   --no-video-device           Do not use video device
   --no-audio-device           Do not use audio device
   --force-i420                Prefer I420 format for video capture (only on supported devices)
@@ -101,6 +106,7 @@ Options:
   --insecure                  Allow insecure server connections when using SSL
   --log-level INT:value in {verbose->0,info->1,warning->2,error->3,none->4} OR {0,1,2,3,4}
                               Log severity level threshold
+  --screen-capture            Capture screen
   --disable-echo-cancellation Disable echo cancellation for audio
   --disable-auto-gain-control Disable auto gain control for audio
   --disable-noise-suppression Disable noise suppression for audio
@@ -108,6 +114,23 @@ Options:
   --disable-typing-detection  Disable typing detection for audio
   --disable-residual-echo-detector
                               Disable residual echo detector for audio
+  --video-codec-engines       List available video encoders/decoders
+  --vp8-encoder :value in {default->0,software->6} OR {0,6}
+                              VP8 Encoder
+  --vp8-decoder :value in {default->0,software->6} OR {0,6}
+                              VP8 Decoder
+  --vp9-encoder :value in {default->0,software->6} OR {0,6}
+                              VP9 Encoder
+  --vp9-decoder :value in {default->0,software->6} OR {0,6}
+                              VP9 Decoder
+  --av1-encoder :value in {default->0,software->6} OR {0,6}
+                              AV1 Encoder
+  --av1-decoder :value in {default->0,software->6} OR {0,6}
+                              AV1 Decoder
+  --h264-encoder :value in {default->0,videotoolbox->5} OR {0,5}
+                              H.264 Encoder
+  --h264-decoder :value in {default->0,videotoolbox->5} OR {0,5}
+                              H.264 Decoder
   --serial TEXT:serial setting format
                               Serial port settings for datachannel passthrough [DEVICE],[BAUDRATE]
 
@@ -115,6 +138,35 @@ Subcommands:
   test                        Mode for momo development with simple HTTP server
   ayame                       Mode for working with WebRTC Signaling Server Ayame
   sora                        Mode for working with WebRTC SFU Sora
+```
+
+#### ビデオコーデックエンジン
+
+```
+$ ./momo --video-codec-engines
+VP8:
+  Encoder:
+    - Software [software] (default)
+  Decoder:
+    - Software [software] (default)
+
+VP9:
+  Encoder:
+    - Software [software] (default)
+  Decoder:
+    - Software [software] (default)
+
+AV1:
+  Encoder:
+    - Software [software] (default)
+  Decoder:
+    - Software [software] (default)
+
+H264:
+  Encoder:
+    - VideoToolbox [videotoolbox] (default)
+  Decoder:
+    - VideoToolbox [videotoolbox] (default)
 ```
 
 ### test モードヘルプ
@@ -167,21 +219,29 @@ Options:
   -h,--help                   Print this help message and exit
   --help-all                  Print help message for all modes and exit
   --auto                      Connect to Sora automatically
-  --video-codec TEXT:{H264,VP8,VP9}
+  --video BOOLEAN:value in {false->0,true->1} OR {0,1}
+                              Send video to sora (default: true)
+  --audio BOOLEAN:value in {false->0,true->1} OR {0,1}
+                              Send audio to sora (default: true)
+  --video-codec-type TEXT:{,AV1,H264,VP8,VP9}
                               Video codec for send
-  --audio-codec TEXT:{OPUS}
-                              Audio codec for send
-  --video-bitrate INT:INT in [1 - 30000]
-                              Video bitrate
-  --audio-bitrate INT:INT in [6 - 510]
-                              Audio bitrate
-  --multistream               Use multistream
+  --audio-codec-type TEXT:{,OPUS}
+  --video-bit-rate INT:INT in [0 - 30000]
+                              Video bit rate
+  --audio-bit-rate INT:INT in [0 - 510]
+                              Audio bit rate
+  --multistream BOOLEAN:value in {false->0,true->1} OR {0,1}
+                              Use multistream (default: false)
   --role TEXT:{downstream,recvonly,sendonly,sendrecv,upstream}
                               Role (default: upstream)
-  --spotlight INT:INT in [1 - 10]
+  --spotlight BOOLEAN:value in {false->0,true->1} OR {0,1}
+                              Use spotlight
+  --spotlight-number INT:INT in [0 - 8]
                               Stream count delivered in spotlight
   --port INT:INT in [-1 - 65535]
                               Port number (default: -1)
+  --simulcast BOOLEAN:value in {false->0,true->1} OR {0,1}
+                              Use simulcast (default: false)
   --metadata TEXT:JSON Value  Signaling metadata used in connect message
 ```
 

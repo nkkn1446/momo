@@ -4,15 +4,16 @@
 
 ## 概要
 
-SDL (Simple DirectMedia Layer) を利用することで、 Momo 自体が受信した音声や映像を出力することができるようになります。
+SDL (Simple DirectMedia Layer) を利用することで、 Momo 自体が受信した映像を出力することができるようになります。
 
 ## 注意
 
 - この機能は ayame と sora モードでのみ利用できます
     - test モードでは test.html が HTTPS ではないため getUserMedia を使用できません
-- この機能は macOS または Linux でのみ利用できます
-
-  - 当たり前ですが CUI 環境では利用できませんのでご注意下さい
+- この機能は Windows または macOS または Linux で利用できます
+- この機能を以下の組み合わせで利用するとパフォーマンスに影響が出るため避けてください
+    - --use-native と --show-me を併用する組み合わせ
+    - --use-native と非ハードウェアエンコードの組み合わせ
 
 ## SDL コマンド引数
 

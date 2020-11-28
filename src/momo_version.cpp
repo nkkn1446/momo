@@ -1,5 +1,4 @@
 #include "momo_version.h"
-#include "momo_version.gen.h"
 
 #include <fstream>
 #include <sstream>
@@ -14,9 +13,12 @@
 #include <windows.h>
 #endif
 
+#include "momo_version.gen.h"
+
 #if defined(__APPLE__) || defined(__linux__)
 #include <sys/utsname.h>
 #endif
+
 #if defined(__APPLE__)
 #include "mac_helper/macos_version.h"
 #endif
@@ -175,7 +177,7 @@ std::string MomoVersion::GetEnvironmentName() {
   }
 
 #if USE_JETSON_ENCODER
-  // Jetson Nano の場合、更に詳細な情報を取得する
+  // Jetson 系の場合、更に詳細な情報を取得する
 
   // nvidia-l4t-core のバージョンを拾う
   // $ dpkg-query --show nvidia-l4t-core

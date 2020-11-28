@@ -11,11 +11,11 @@
 #include <mutex>
 #include <queue>
 
-#include "api/video_codecs/video_encoder.h"
-#include "common_video/h264/h264_bitstream_parser.h"
-#include "common_video/include/bitrate_adjuster.h"
-#include "modules/video_coding/codecs/h264/include/h264.h"
-#include "rtc_base/critical_section.h"
+// WebRTC
+#include <api/video_codecs/video_encoder.h>
+#include <common_video/h264/h264_bitstream_parser.h>
+#include <common_video/include/bitrate_adjuster.h>
+#include <modules/video_coding/codecs/h264/include/h264.h>
 
 // NvCodec
 #ifdef _WIN32
@@ -48,8 +48,7 @@ class NvCodecH264Encoder : public webrtc::VideoEncoder {
  private:
   std::mutex mutex_;
   webrtc::EncodedImageCallback* callback_ = nullptr;
-  webrtc::BitrateAdjuster bitrate_adjuster_ =
-      webrtc::BitrateAdjuster(0.5, 0.95);
+  webrtc::BitrateAdjuster bitrate_adjuster_;
   uint32_t target_bitrate_bps_ = 0;
   uint32_t max_bitrate_bps_ = 0;
 
@@ -75,7 +74,7 @@ class NvCodecH264Encoder : public webrtc::VideoEncoder {
   webrtc::VideoCodecMode mode_ = webrtc::VideoCodecMode::kRealtimeVideo;
   NV_ENC_INITIALIZE_PARAMS initialize_params_;
   std::vector<std::vector<uint8_t>> v_packet_;
-  webrtc::EncodedImage encoded_image_;
+  std::unique_ptr<webrtc::EncodedImage> encoded_image_;
 };
 
 #endif  // NVCODEC_H264_ENCODER_H_
