@@ -258,7 +258,7 @@ void Util::ParseArgs(int argc,
   test_app->add_option("--port", args.test_port, "Port number (default: 8080)")
       ->check(CLI::Range(0, 65535));
   test_app
-      ->add_option("--custom-window-title", cs.test_custom_window_title, "（Custom）キャプチャウィンドウ名");
+      ->add_option("--custom-window-title", args.test_custom_window_title, "（Custom）キャプチャウィンドウ名");
 
   ayame_app
       ->add_option("SIGNALING-URL", args.ayame_signaling_url, "Signaling URL")

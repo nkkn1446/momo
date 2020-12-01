@@ -21,8 +21,8 @@
 #include "third_party/libyuv/include/libyuv/planar_functions.h"
 #include "third_party/libyuv/include/libyuv/scale.h"
 
-WindowCapturerTrackSource::DesktopCaptureImpl::DesktopCaptureImpl(const ConnectionSettings& cs) : 
-	frame_(cs.test_custom_window_title) {}
+WindowCapturerTrackSource::DesktopCaptureImpl::DesktopCaptureImpl(const MomoArgs& args) : 
+	frame_(args.test_custom_window_title) {}
 WindowCapturerTrackSource::DesktopCaptureImpl::~DesktopCaptureImpl() {}
 
 void WindowCapturerTrackSource::DesktopCaptureImpl::StartCapture() {
@@ -61,8 +61,8 @@ bool WindowCapturerTrackSource::DesktopCaptureImpl::CaptureProcess() {
 
 }
 
-WindowCapturerTrackSource::WindowCapturerTrackSource(const ConnectionSettings& cs) :
-      dcm_(new rtc::RefCountedObject<DesktopCaptureImpl>(cs)) {
+WindowCapturerTrackSource::WindowCapturerTrackSource(const MomoArgs& args) :
+      dcm_(new rtc::RefCountedObject<DesktopCaptureImpl>(args)) {
   dcm_->RegisterCaptureDataCallback(this);
   dcm_->StartCapture();
 }
@@ -112,7 +112,7 @@ void WindowCapturerTrackSource::OnFrame(
     return;
   }
 
-  if (useNativeBuffer() && frame.video_frame_buffer()->type() ==
+  if (UseNativeBuffer() && frame.video_frame_buffer()->type() ==
                                webrtc::VideoFrameBuffer::Type::kNative) {
     NativeBuffer* frame_buffer =
         dynamic_cast<NativeBuffer*>(frame.video_frame_buffer().get());

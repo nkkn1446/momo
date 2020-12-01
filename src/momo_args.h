@@ -59,6 +59,7 @@ struct MomoArgs {
   bool sora_simulcast = false;
 
   std::string test_document_root;
+  std::string test_custom_window_title;
   int test_port = 8080;
 
   std::string ayame_signaling_url;

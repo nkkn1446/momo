@@ -19,21 +19,21 @@
 #include "window_capturer_frame.h"
 #include "rtc_base/timestamp_aligner.h"
 
-#include "connection_settings.h"
+#include "momo_args.h"
 
 class WindowCapturerTrackSource : public ScalableVideoTrackSource,
                             public rtc::VideoSinkInterface<webrtc::VideoFrame> {
  private:
   typedef rtc::AdaptedVideoTrackSource super;
  public:
-  WindowCapturerTrackSource(const ConnectionSettings& cs);
+  WindowCapturerTrackSource(const MomoArgs& args);
   virtual ~WindowCapturerTrackSource();
 
   void OnFrame(const webrtc::VideoFrame& frame) override;
 
   class DesktopCaptureImpl : public webrtc::videocapturemodule::VideoCaptureImpl {
   public:
-	  DesktopCaptureImpl(const ConnectionSettings& cs);
+	  DesktopCaptureImpl(const MomoArgs& args);
 	  ~DesktopCaptureImpl() override;
 
 	  void StartCapture();
