@@ -14,11 +14,15 @@ OUTPUT_DIR=$3
 set -ex
 
 pushd $OUTPUT_DIR
-  curl -LO https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}.tar.gz
-  tar xf cmake-${CMAKE_VERSION}.tar.gz
-  rm cmake-${CMAKE_VERSION}.tar.gz
-  mv cmake-${CMAKE_VERSION} cmake
-  pushd cmake
-    ./bootstrap && make && make install
-  popd
+  curl -LO https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-${PLATFORM}-x86_64.tar.gz
+  tar xf cmake-${CMAKE_VERSION}-${PLATFORM}-x86_64.tar.gz
+  rm cmake-${CMAKE_VERSION}-${PLATFORM}-x86_64.tar.gz
+  mv cmake-${CMAKE_VERSION}-${PLATFORM}-x86_64 cmake
+  #curl -LO https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}.tar.gz
+  #tar xf cmake-${CMAKE_VERSION}.tar.gz
+  #rm cmake-${CMAKE_VERSION}.tar.gz
+  #mv cmake-${CMAKE_VERSION} cmake
+  #pushd cmake
+  #  ./bootstrap && make && make install
+  #popd
 popd
